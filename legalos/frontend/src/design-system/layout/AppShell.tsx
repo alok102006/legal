@@ -24,7 +24,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     { name: 'Contract Intelligence', href: '/', icon: FileText, active: true },
     { name: 'Vendor Intelligence', href: '/vendors', icon: Users, active: true },
     { name: 'Legal Notice Center', href: '/notices', icon: Bell, active: true },
-    { name: 'Compliance Center', href: '/compliance', icon: Activity, active: false, label: 'Phase 2' },
+    { name: 'Compliance Center', href: '/compliance', icon: Activity, active: true },
     { name: 'Knowledge Hub', href: '/knowledge', icon: BookOpen, active: false, label: 'Phase 2' },
   ];
 

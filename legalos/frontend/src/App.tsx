@@ -7,6 +7,7 @@ import ContractDetail from './workspaces/contract-intelligence/pages/ContractDet
 import VendorDashboard from './workspaces/vendor-intelligence/pages/Dashboard';
 import NoticeDashboard from './workspaces/legal-notice-center/pages/Dashboard';
 import NoticeDetail from './workspaces/legal-notice-center/pages/NoticeDetail';
+import ComplianceDashboard from './workspaces/compliance-center/pages/Dashboard';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
             <Route path="/vendors" element={<VendorDashboard />} />
             <Route path="/notices" element={<NoticeDashboard />} />
             <Route path="/notices/:id" element={<NoticeDetail />} />
+            <Route path="/compliance" element={<ComplianceDashboard />} />
             {/* Fallback route */}
             <Route path="*" element={<Dashboard />} />
           </Routes>

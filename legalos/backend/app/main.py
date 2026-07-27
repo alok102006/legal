@@ -11,6 +11,7 @@ from app.shared.exceptions import LegalOSException
 from app.workspaces.contract_intelligence.router import router as contract_router
 from app.workspaces.vendor_intelligence.router import router as vendor_router
 from app.workspaces.legal_notice_center.router import router as notice_router
+from app.workspaces.compliance_center.router import router as compliance_router
 
 
 @asynccontextmanager
@@ -132,4 +133,10 @@ app.include_router(
     notice_router,
     prefix="/api/v1/notices",
     tags=["Legal Notice Center"]
+)
+
+app.include_router(
+    compliance_router,
+    prefix="/api/v1/compliance",
+    tags=["Compliance Center"]
 )

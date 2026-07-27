@@ -73,13 +73,11 @@ def chunk_by_clause(text: str, max_chars: int = 4000) -> List[Dict[str, Any]]:
 
 def chunk_by_paragraph(text: str, max_chars: int = 1500) -> List[Dict[str, Any]]:
     """
-    Standard paragraph-based chunker. (Placeholder / fallback).
-    Groups paragraphs up to max_chars characters.
+    Standard paragraph-based chunker.
+    Splits text by double newlines and returns each paragraph as a separate chunk.
     """
-    paragraphs = text.split('\n\n')
+    paragraphs = re.split(r'\n[ \t]*\n', text)
     chunks = []
-    current_chunk = []
-    current_length = 0
     chunk_index = 0
     
     for para in paragraphs:
@@ -87,24 +85,24 @@ def chunk_by_paragraph(text: str, max_chars: int = 1500) -> List[Dict[str, Any]]
         if not cleaned_para:
             continue
             
-        if current_length + len(cleaned_para) > max_chars and current_chunk:
+        # If a single paragraph is larger than max_chars, split it into character chunks
+        if len(cleaned_para) > max_chars:
+            start = 0
+            while start < len(cleaned_para):
+                end = start + max_chars
+                chunks.append({
+                    "clause_index": chunk_index,
+                    "text": cleaned_para[start:end].strip()
+                })
+                chunk_index += 1
+                start = end
+        else:
             chunks.append({
                 "clause_index": chunk_index,
-                "text": "\n".join(current_chunk)
+                "text": cleaned_para
             })
             chunk_index += 1
-            current_chunk = []
-            current_length = 0
             
-        current_chunk.append(cleaned_para)
-        current_length += len(cleaned_para)
-        
-    if current_chunk:
-        chunks.append({
-            "clause_index": chunk_index,
-            "text": "\n".join(current_chunk)
-        })
-        
     return chunks
 
 

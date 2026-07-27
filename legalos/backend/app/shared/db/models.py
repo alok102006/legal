@@ -52,3 +52,10 @@ class Document(Base, UUIDPrimaryKeyMixin):
         cascade="all, delete-orphan",
         uselist=False
     )
+
+# Import other models at the end of the file to register them in SQLAlchemy's metadata registry
+from app.workspaces.contract_intelligence.models import Contract, Clause, NegotiationSuggestion
+from app.workspaces.vendor_intelligence.models import VendorCheck
+from app.workspaces.legal_notice_center.models import Notice, DraftReply
+from app.workspaces.compliance_center.models import ComplianceTask, ComplianceDocumentAnalysis
+

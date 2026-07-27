@@ -77,3 +77,38 @@ export interface NoticeDetail {
   created_at: string;
   replies: DraftReply[];
 }
+
+export interface ComplianceTask {
+  id: string;
+  title: string;
+  category: 'tax' | 'corporate' | 'labor' | 'license' | 'other';
+  due_date: string | null;
+  status: 'pending' | 'completed' | 'overdue';
+  description: string | null;
+  penalty_desc: string | null;
+  document_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ComplianceDocumentAnalysis {
+  id: string;
+  document_id: string;
+  authority: string;
+  document_type: string;
+  identifier_number: string | null;
+  issue_date: string | null;
+  expiry_date: string | null;
+  status: 'active' | 'expired' | 'needs_action' | 'warning';
+  risk_assessment: string | null;
+  extracted_actions: any[] | null;
+  created_at: string;
+}
+
+export interface ComplianceInitResponse {
+  company_name: string;
+  business_type: string;
+  gstin: string;
+  constitution: string;
+  tasks: ComplianceTask[];
+}
