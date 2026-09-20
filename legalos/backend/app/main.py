@@ -12,6 +12,7 @@ from app.workspaces.contract_intelligence.router import router as contract_route
 from app.workspaces.vendor_intelligence.router import router as vendor_router
 from app.workspaces.legal_notice_center.router import router as notice_router
 from app.workspaces.compliance_center.router import router as compliance_router
+from app.workspaces.knowledge_hub.router import router as knowledge_router
 
 
 @asynccontextmanager
@@ -139,4 +140,10 @@ app.include_router(
     compliance_router,
     prefix="/api/v1/compliance",
     tags=["Compliance Center"]
+)
+
+app.include_router(
+    knowledge_router,
+    prefix="/api/v1/knowledge",
+    tags=["Knowledge Hub"]
 )

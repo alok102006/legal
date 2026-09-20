@@ -1,0 +1,3 @@
+PolicyID,PolicyName,Rules
+1,Termination,Notice period is 60 days for all senior managers
+2,RemoteWork,Allowed 2 days per week with manager approval

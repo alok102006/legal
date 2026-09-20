@@ -25,7 +25,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     { name: 'Vendor Intelligence', href: '/vendors', icon: Users, active: true },
     { name: 'Legal Notice Center', href: '/notices', icon: Bell, active: true },
     { name: 'Compliance Center', href: '/compliance', icon: Activity, active: true },
-    { name: 'Knowledge Hub', href: '/knowledge', icon: BookOpen, active: false, label: 'Phase 2' },
+    { name: 'Knowledge Hub', href: '/knowledge', icon: BookOpen, active: true },
   ];
 
   const currentNav = navigation.find((item) => {
@@ -80,10 +80,11 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
                 >
                   <Icon className="w-5 h-5 flex-shrink-0" />
                   <span className="flex-1">{item.name}</span>
-                  <span className="text-[9px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400 border border-slate-700 font-semibold">{item.label}</span>
+                  {(item as any).label && <span className="text-[9px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400 border border-slate-700 font-semibold">{(item as any).label}</span>}
                 </div>
               );
             }
+
 
             return (
               <NavLink

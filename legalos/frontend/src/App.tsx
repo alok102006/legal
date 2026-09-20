@@ -8,6 +8,7 @@ import VendorDashboard from './workspaces/vendor-intelligence/pages/Dashboard';
 import NoticeDashboard from './workspaces/legal-notice-center/pages/Dashboard';
 import NoticeDetail from './workspaces/legal-notice-center/pages/NoticeDetail';
 import ComplianceDashboard from './workspaces/compliance-center/pages/Dashboard';
+import KnowledgeDashboard from './workspaces/knowledge-hub/pages/Dashboard';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
             <Route path="/notices" element={<NoticeDashboard />} />
             <Route path="/notices/:id" element={<NoticeDetail />} />
             <Route path="/compliance" element={<ComplianceDashboard />} />
+            <Route path="/knowledge" element={<KnowledgeDashboard />} />
             {/* Fallback route */}
             <Route path="*" element={<Dashboard />} />
           </Routes>
@@ -29,5 +31,6 @@ function App() {
     </AuthProvider>
   );
 }
+
 
 export default App;

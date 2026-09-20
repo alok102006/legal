@@ -18,8 +18,13 @@ def init_collections() -> None:
         "legal_notices": {
             "size": 384,
             "distance": qmodels.Distance.COSINE
+        },
+        "knowledge_base": {
+            "size": 384,
+            "distance": qmodels.Distance.COSINE
         }
     }
+
     
     print("[QDRANT] Running collection warming/creation...")
     

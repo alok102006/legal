@@ -148,9 +148,10 @@ export const Dashboard: React.FC = () => {
     } catch (err) {
       console.error("Failed to update task status:", err);
       // Revert UI on error
-      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: currentStatus } : t));
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: currentStatus as any } : t));
     }
   };
+
 
   // Delete task
   const handleDeleteTask = async (taskId: string) => {
