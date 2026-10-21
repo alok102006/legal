@@ -4,17 +4,64 @@
 
 @layer base {
   html, body {
-    @apply h-full font-sans antialiased bg-slate-50 text-slate-900;
+    @apply h-full font-sans antialiased bg-[#090D16] text-[#DDE2F7];
+    color-scheme: dark;
   }
   
-  /* Focus outline settings for WCAG AA compliance using standard CSS to avoid @apply issues */
+  /* Custom scrollbar for enterprise high-density UI */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #090D16;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  /* Focus outline settings for accessibility */
   *:focus-visible {
-    outline: 2px solid #2563eb;
+    outline: 2px solid #3B82F6;
     outline-offset: 2px;
   }
 
   ::selection {
-    background-color: #dbe5ff;
-    color: #1e3a8a;
+    background-color: rgba(59, 130, 246, 0.35);
+    color: #93C5FD;
   }
 }
+
+@layer utilities {
+  .glass-panel {
+    background: rgba(13, 19, 34, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  
+  .glass-card {
+    background: rgba(20, 28, 48, 0.7);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .glow-border-blue {
+    box-shadow: 0 0 16px -2px rgba(59, 130, 246, 0.3);
+    border-color: rgba(59, 130, 246, 0.5);
+  }
+
+  .glow-border-emerald {
+    box-shadow: 0 0 16px -2px rgba(16, 185, 129, 0.3);
+    border-color: rgba(16, 185, 129, 0.5);
+  }
+
+  .glow-border-ruby {
+    box-shadow: 0 0 16px -2px rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.5);
+  }
+}
+

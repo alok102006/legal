@@ -67,11 +67,17 @@ async def initialize_statutory_tasks(
     # 2. Define standard list of statutory filings
     tasks_to_create = []
     
-    # We will generate monthly tasks for July 2026 to December 2026
-    months = [7, 8, 9, 10, 11, 12]
-    year = 2026
+    # Dynamic Financial Year (FY starts April 1, ends March 31)
+    today = date.today()
+    fy_year = today.year if today.month >= 4 else today.year - 1
+    fy_next = fy_year + 1
+    fy_str = f"FY {fy_year}-{str(fy_next)[-2:]}"
+    ay_str = f"AY {fy_next}-{str(fy_next + 1)[-2:]}"
+
+    # Indian FY full schedule: months 4-12 of fy_year and 1-3 of fy_next
+    months_schedule = [(m, fy_year) for m in range(4, 13)] + [(m, fy_next) for m in range(1, 4)]
     
-    for month in months:
+    for month, year in months_schedule:
         # GST Filings
         tasks_to_create.append({
             "title": f"GST GSTR-1 Return Filing ({month:02d}/{year})",
@@ -111,34 +117,48 @@ async def initialize_statutory_tasks(
             
     # Advance Tax installments (Quarterly)
     tasks_to_create.append({
-        "title": "Advance Tax Second Installment Payment (FY 2026-27)",
+        "title": f"Advance Tax First Installment Payment ({fy_str})",
         "category": "tax",
-        "due_date": date(2026, 9, 15),
+        "due_date": date(fy_year, 6, 15),
+        "description": "Payment of 15% of estimated income tax liability for the financial year.",
+        "penalty_desc": "1% interest per month under section 234C on short payment."
+    })
+    tasks_to_create.append({
+        "title": f"Advance Tax Second Installment Payment ({fy_str})",
+        "category": "tax",
+        "due_date": date(fy_year, 9, 15),
         "description": "Payment of 45% of estimated income tax liability for the financial year.",
         "penalty_desc": "1% interest per month under section 234C on short payment."
     })
     tasks_to_create.append({
-        "title": "Advance Tax Third Installment Payment (FY 2026-27)",
+        "title": f"Advance Tax Third Installment Payment ({fy_str})",
         "category": "tax",
-        "due_date": date(2026, 12, 15),
+        "due_date": date(fy_year, 12, 15),
         "description": "Payment of 75% of estimated income tax liability for the financial year.",
+        "penalty_desc": "1% interest per month under section 234C on short payment."
+    })
+    tasks_to_create.append({
+        "title": f"Advance Tax Fourth Installment Payment ({fy_str})",
+        "category": "tax",
+        "due_date": date(fy_next, 3, 15),
+        "description": "Payment of 100% of estimated income tax liability for the financial year.",
         "penalty_desc": "1% interest per month under section 234C on short payment."
     })
 
     # Annual ITR filings
     if business_type == "sole_proprietorship":
         tasks_to_create.append({
-            "title": "Income Tax Return (ITR-3/4) Filing (AY 2026-27)",
+            "title": f"Income Tax Return (ITR-3/4) Filing ({ay_str})",
             "category": "tax",
-            "due_date": date(2026, 7, 31),
+            "due_date": date(fy_year, 7, 31),
             "description": "Annual Income Tax Return filing for individuals/proprietorships without audit.",
             "penalty_desc": "Late filing fee up to INR 5,000 under section 234F."
         })
     else:
         tasks_to_create.append({
-            "title": "Income Tax Return (ITR-5/6) Filing (AY 2026-27)",
+            "title": f"Income Tax Return (ITR-5/6) Filing ({ay_str})",
             "category": "tax",
-            "due_date": date(2026, 10, 31),
+            "due_date": date(fy_year, 10, 31),
             "description": "Annual Income Tax Return filing for partnership firms and companies.",
             "penalty_desc": "Late filing fee up to INR 5,000 under section 234F."
         })
@@ -146,38 +166,38 @@ async def initialize_statutory_tasks(
     # MCA filings for Private Limited / LLP
     if business_type == "private_limited":
         tasks_to_create.append({
-            "title": "DIR-3 KYC Director KYC Verification",
+            "title": f"DIR-3 KYC Director KYC Verification ({fy_str})",
             "category": "corporate",
-            "due_date": date(2026, 9, 30),
+            "due_date": date(fy_year, 9, 30),
             "description": "Annual KYC filing for all directors holding DIN.",
             "penalty_desc": "Late fee of INR 5,000 per director."
         })
         tasks_to_create.append({
-            "title": "MCA Form AOC-4 Filing (Financial Statements)",
+            "title": f"MCA Form AOC-4 Filing (Financial Statements - {fy_str})",
             "category": "corporate",
-            "due_date": date(2026, 10, 30),
+            "due_date": date(fy_year, 10, 30),
             "description": "Filing of audited financial statements with the Registrar of Companies (RoC).",
             "penalty_desc": "INR 100 per day late fee + company and director penalties."
         })
         tasks_to_create.append({
-            "title": "MCA Form MGT-7 Filing (Annual Return)",
+            "title": f"MCA Form MGT-7 Filing (Annual Return - {fy_str})",
             "category": "corporate",
-            "due_date": date(2026, 11, 29),
+            "due_date": date(fy_year, 11, 29),
             "description": "Filing of annual return with the Registrar of Companies (RoC).",
             "penalty_desc": "INR 100 per day late fee."
         })
     elif business_type == "llp":
         tasks_to_create.append({
-            "title": "MCA Form 11 Filing (Annual Return of LLP)",
+            "title": f"MCA Form 11 Filing (Annual Return of LLP - {fy_str})",
             "category": "corporate",
-            "due_date": date(2026, 7, 30),
+            "due_date": date(fy_year, 7, 30),
             "description": "Filing of annual return detailing LLP partners and capital contributions.",
             "penalty_desc": "INR 100 per day late fee."
         })
         tasks_to_create.append({
-            "title": "MCA Form 8 Filing (Statement of Account & Solvency)",
+            "title": f"MCA Form 8 Filing (Statement of Account & Solvency - {fy_str})",
             "category": "corporate",
-            "due_date": date(2026, 10, 30),
+            "due_date": date(fy_year, 10, 30),
             "description": "Filing of Statement of Account & Solvency with the RoC.",
             "penalty_desc": "INR 100 per day late fee."
         })
@@ -217,19 +237,46 @@ async def run_async_compliance_analysis(
             from app.core.rag.document_parser import parse_document
             document_text = parse_document(file_bytes, filename)
             
-            # Context for LLM (up to 8000 characters)
-            context_text = document_text[:8000]
-            
-            # Call Gemini
-            prompt = COMPLIANCE_DOCUMENT_ANALYSIS_USER.format(document_text=context_text)
-            response_json = llm_client.generate(
-                prompt=prompt,
-                system=COMPLIANCE_DOCUMENT_ANALYSIS_SYSTEM,
-                json_mode=True,
-                workspace="compliance_center"
-            )
-            
-            analysis_data = json.loads(response_json)
+            # Multi-window context extraction (up to 32,000 characters across 4 windows)
+            window_size = 8000
+            total_len = min(len(document_text), 32000)
+            windows = [document_text[i:i + window_size] for i in range(0, max(1, total_len), window_size)]
+            if not windows:
+                windows = [document_text[:8000]]
+
+            analysis_data = {}
+            all_action_items = []
+
+            for w_idx, win_text in enumerate(windows):
+                if not win_text.strip():
+                    continue
+                try:
+                    prompt = COMPLIANCE_DOCUMENT_ANALYSIS_USER.format(document_text=win_text)
+                    response_json = llm_client.generate(
+                        prompt=prompt,
+                        system=COMPLIANCE_DOCUMENT_ANALYSIS_SYSTEM,
+                        json_mode=True,
+                        workspace="compliance_center"
+                    )
+                    win_data = json.loads(response_json)
+                    if not analysis_data:
+                        analysis_data = win_data
+                    items = win_data.get("action_items", [])
+                    if items:
+                        all_action_items.extend(items)
+                except Exception as win_err:
+                    print(f"[COMPLIANCE SERVICE] Window {w_idx} LLM error: {win_err}")
+
+            if not analysis_data:
+                analysis_data = {
+                    "authority": "Detected Compliance Authority",
+                    "document_type": "Compliance Notice",
+                    "status": "active",
+                    "risk_assessment": "Document parsed across multiple windows.",
+                    "action_items": all_action_items
+                }
+            else:
+                analysis_data["action_items"] = all_action_items
             
             # Helper to parse YYYY-MM-DD
             def parse_date(date_str):

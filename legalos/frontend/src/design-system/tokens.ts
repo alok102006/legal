@@ -1,37 +1,55 @@
 /**
- * Design system tokens defining colors, spacing, typography and scales.
- * Unified theme structure used across all workspace modules.
+ * Obsidian Lexicon Design System Tokens
+ * Unified theme structure used across all LegalOS enterprise workspace modules.
  */
 export const tokens = {
   colors: {
+    canvas: {
+      base: '#090D16',       // Deep Canvas Void
+      subtle: '#0D1322',     // Workspace canvas, panels
+      elevated: '#141C30',   // Cards, drawers, modal sheets
+      glass: 'rgba(20, 28, 48, 0.72)',
+    },
+    border: {
+      hairline: 'rgba(255, 255, 255, 0.08)',
+      subtle: 'rgba(255, 255, 255, 0.14)',
+      active: 'rgba(59, 130, 246, 0.50)',
+    },
     brand: {
-      light: '#f0f4ff',
-      primary: '#3b82f6',
-      primaryHover: '#2563eb',
-      dark: '#1e3a8a',
-      background: '#f8fafc',
-      slateDark: '#0f172a'
+      primary: '#3B82F6',    // Sapphire Intelligence
+      hover: '#2563EB',
+      light: '#60A5FA',
+      glow: 'rgba(59, 130, 246, 0.25)',
     },
     risk: {
-      low: '#10b981',     // Green
-      lowBg: '#ecfdf5',
-      lowText: '#065f46',
-      medium: '#f59e0b',  // Yellow
-      mediumBg: '#fffbeb',
-      mediumText: '#92400e',
-      high: '#ef4444',    // Red
-      highBg: '#fef2f2',
-      highText: '#991b1b',
-      none: '#64748b',
-      noneBg: '#f1f5f9',
-      noneText: '#334155'
+      low: '#10B981',        // Emerald Compliance
+      lowBg: 'rgba(16, 185, 129, 0.12)',
+      lowText: '#34D399',
+      lowBorder: 'rgba(16, 185, 129, 0.3)',
+      medium: '#F59E0B',     // Amber Deadline Looming
+      mediumBg: 'rgba(245, 158, 11, 0.12)',
+      mediumText: '#FBBF24',
+      mediumBorder: 'rgba(245, 158, 11, 0.3)',
+      high: '#EF4444',       // Ruby Critical Exposure
+      highBg: 'rgba(239, 68, 68, 0.12)',
+      highText: '#F87171',
+      highBorder: 'rgba(239, 68, 68, 0.4)',
+      none: '#64748B',
+      noneBg: 'rgba(100, 116, 139, 0.12)',
+      noneText: '#94A3B8',
+      noneBorder: 'rgba(100, 116, 139, 0.2)'
+    },
+    text: {
+      primary: '#F8FAFC',
+      secondary: '#94A3B8',
+      muted: '#64748B'
     }
   },
   spacing: {
     xs: '4px',
     sm: '8px',
-    md: '16px',
-    lg: '24px',
+    md: '12px',
+    lg: '20px',
     xl: '32px'
   },
   radius: {
@@ -41,14 +59,8 @@ export const tokens = {
     full: '9999px'
   },
   typography: {
-    fontFamily: 'Inter, system-ui, sans-serif',
-    sizes: {
-      xs: '0.75rem',
-      sm: '0.875rem',
-      base: '1rem',
-      lg: '1.125rem',
-      xl: '1.25rem',
-      xxl: '1.5rem'
-    }
+    fontSans: 'Inter, system-ui, -apple-system, sans-serif',
+    fontMono: 'JetBrains Mono, monospace'
   }
-}
+};
+

@@ -140,7 +140,8 @@ async def ask_knowledge(
     res = await service.ask_company_knowledge(
         session=session,
         question=req.question,
-        company_id=req.company_id
+        company_id=req.company_id,
+        document_id=req.document_id
     )
     return KnowledgeAskResponse(
         answer=res["answer"],

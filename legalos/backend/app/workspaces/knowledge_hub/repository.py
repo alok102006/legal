@@ -158,3 +158,15 @@ async def delete_company_document(
     await session.delete(doc)
     await session.commit()
     return True
+
+
+async def update_document_risk_analysis(
+    session: AsyncSession,
+    document_id: uuid.UUID,
+    risk_data: dict
+) -> None:
+    """Persist AI risk analysis JSON to the company document record."""
+    doc = await get_company_document(session, document_id)
+    if doc:
+        doc.risk_analysis = risk_data
+        await session.commit()

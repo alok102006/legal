@@ -11,7 +11,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   className = '',
   count = 1,
 }) => {
-  const baseClass = 'bg-slate-200 animate-pulse rounded';
+  const baseClass = 'bg-white/[0.06] animate-pulse rounded-md';
 
   if (variant === 'circle') {
     return <div className={`${baseClass} rounded-full ${className}`} />;
@@ -19,7 +19,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
 
   if (variant === 'card') {
     return (
-      <div className={`border border-slate-200 rounded-lg p-5 bg-white shadow-sm flex flex-col gap-3 ${className}`}>
+      <div className={`border border-white/[0.08] rounded-xl p-5 bg-[#0D1322]/80 backdrop-blur-md flex flex-col gap-3 ${className}`}>
         <div className={`${baseClass} h-6 w-1/3`} />
         <div className={`${baseClass} h-4 w-2/3`} />
         <div className="flex flex-col gap-2 mt-2">
@@ -27,7 +27,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
           <div className={`${baseClass} h-3 w-full`} />
           <div className={`${baseClass} h-3 w-4/5`} />
         </div>
-        <div className="flex justify-between items-center mt-4 pt-3 border-t border-slate-100">
+        <div className="flex justify-between items-center mt-4 pt-3 border-t border-white/[0.06]">
           <div className={`${baseClass} h-8 w-20`} />
           <div className={`${baseClass} h-5 w-24`} />
         </div>
@@ -37,8 +37,8 @@ export const Skeleton: React.FC<SkeletonProps> = ({
 
   if (variant === 'table') {
     return (
-      <div className={`border border-slate-200 rounded-lg overflow-hidden bg-white ${className}`}>
-        <div className="bg-slate-50 border-b border-slate-200 p-4 flex gap-4">
+      <div className={`border border-white/[0.08] rounded-xl overflow-hidden bg-[#0D1322]/80 ${className}`}>
+        <div className="bg-[#141C30]/80 border-b border-white/[0.06] p-4 flex gap-4">
           <div className={`${baseClass} h-4 w-12`} />
           <div className={`${baseClass} h-4 w-1/4`} />
           <div className={`${baseClass} h-4 w-1/6`} />
@@ -70,3 +70,4 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   );
 };
 export default Skeleton;
+

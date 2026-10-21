@@ -147,3 +147,16 @@ async def regenerate_reply(
     draft = await service.regenerate_reply(db, id)
     await db.commit()
     return draft
+
+
+@router.delete("/{id}", status_code=204)
+async def delete_notice(
+    id: uuid.UUID,
+    db: AsyncSession = Depends(get_db_session),
+    current_user: UserStub = Depends(get_current_user)
+):
+    """Deletes a legal notice, its draft replies, document file, and Qdrant vectors."""
+    await service.delete_notice_and_document(db, id)
+    await db.commit()
+    return None
+

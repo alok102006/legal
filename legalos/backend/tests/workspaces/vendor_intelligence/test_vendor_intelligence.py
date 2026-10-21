@@ -1,3 +1,4 @@
+import uuid
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from app.config import settings
@@ -43,9 +44,10 @@ async def test_vendor_service_logging():
     try:
         # Mock database session
         mock_session = AsyncMock()
+        mock_session.add = MagicMock()
         
-        # Mock user_id and gstin
-        user_id = AsyncMock()
+        # Real user UUID
+        user_id = uuid.uuid4()
         gstin = "27AAAAA1111A1Z1"
 
         # Call service
@@ -141,6 +143,7 @@ async def test_sandbox_live_routing(mock_search):
     
     try:
         mock_session = AsyncMock()
+        mock_session.add = MagicMock()
         user_id = MagicMock()
         
         # Configure search return value
@@ -159,7 +162,7 @@ async def test_sandbox_live_routing(mock_search):
         
         assert result.company_name == "Sandbox Tech Pvt Ltd"
         assert result.is_valid is True
-        assert result.trust_score == 95
+        assert result.trust_score == 70
         assert result.fraud_flagged is False
         # Verify regStartDate was formatted parsed to YYYY-MM-DD
         assert str(result.registration_date) == "2023-02-06"

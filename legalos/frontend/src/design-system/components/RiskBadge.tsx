@@ -5,12 +5,14 @@ interface RiskBadgeProps {
   score: number;
   riskType?: string;
   className?: string;
+  showScore?: boolean;
 }
 
 export const RiskBadge: React.FC<RiskBadgeProps> = ({
   score,
   riskType = 'none',
   className = '',
+  showScore = true,
 }) => {
   // Determine risk level based on score
   let level: 'low' | 'medium' | 'high' | 'none' = 'none';
@@ -19,30 +21,33 @@ export const RiskBadge: React.FC<RiskBadgeProps> = ({
     else if (score < 70) level = 'medium';
     else level = 'high';
   } else if (riskType && riskType !== 'none') {
-    // If score is 0 but we have a risk type, default to low or medium
     level = 'low';
   }
 
   const styles = {
     high: {
-      bg: 'bg-red-50 text-red-700 border-red-200',
-      icon: <AlertOctagon className="w-3.5 h-3.5 mr-1" aria-hidden="true" />,
-      label: 'High Risk',
+      bg: 'bg-red-950/80 text-red-300 border-red-500/40 shadow-glow-ruby',
+      icon: <AlertOctagon className="w-3.5 h-3.5 mr-1.5 text-red-400 shrink-0" aria-hidden="true" />,
+      label: 'Critical Risk',
+      dot: 'bg-red-500',
     },
     medium: {
-      bg: 'bg-amber-50 text-amber-700 border-amber-200',
-      icon: <AlertTriangle className="w-3.5 h-3.5 mr-1" aria-hidden="true" />,
-      label: 'Medium Risk',
+      bg: 'bg-amber-950/80 text-amber-300 border-amber-500/40 shadow-glow-amber',
+      icon: <AlertTriangle className="w-3.5 h-3.5 mr-1.5 text-amber-400 shrink-0" aria-hidden="true" />,
+      label: 'Moderate Risk',
+      dot: 'bg-amber-500',
     },
     low: {
-      bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      icon: <ShieldCheck className="w-3.5 h-3.5 mr-1" aria-hidden="true" />,
+      bg: 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40 shadow-glow-emerald',
+      icon: <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-emerald-400 shrink-0" aria-hidden="true" />,
       label: 'Low Risk',
+      dot: 'bg-emerald-500',
     },
     none: {
-      bg: 'bg-slate-50 text-slate-600 border-slate-200',
-      icon: <HelpCircle className="w-3.5 h-3.5 mr-1 text-slate-400" aria-hidden="true" />,
-      label: 'No Risk',
+      bg: 'bg-slate-900 text-slate-400 border-white/10',
+      icon: <HelpCircle className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" aria-hidden="true" />,
+      label: 'Unassessed',
+      dot: 'bg-slate-500',
     },
   };
 
@@ -50,12 +55,18 @@ export const RiskBadge: React.FC<RiskBadgeProps> = ({
 
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded border text-xs font-semibold ${current.bg} ${className}`}
+      className={`inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-semibold backdrop-blur-sm ${current.bg} ${className}`}
       title={`Risk score: ${score}/100, Type: ${riskType}`}
     >
       {current.icon}
-      <span>{current.label} ({score})</span>
+      <span>{current.label}</span>
+      {showScore && (
+        <span className="ml-1.5 font-mono text-[11px] opacity-80 font-bold tabular-nums">
+          [{score}/100]
+        </span>
+      )}
     </span>
   );
 };
 export default RiskBadge;
+

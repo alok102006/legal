@@ -19,6 +19,7 @@ class CompanyDocumentResponse(BaseModel):
     file_type: Optional[str] = None
     file_path: Optional[str] = None
     extracted_text: Optional[str] = None
+    risk_analysis: Optional[Dict[str, Any]] = None  # AI Risk Radar output
     created_at: datetime
 
     class Config:
@@ -78,6 +79,7 @@ class GroundTruthExcerpt(BaseModel):
 class KnowledgeAskRequest(BaseModel):
     question: str = Field(..., min_length=2)
     company_id: Optional[uuid.UUID] = None
+    document_id: Optional[uuid.UUID] = None
 
 
 class KnowledgeAskResponse(BaseModel):

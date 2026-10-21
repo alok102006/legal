@@ -62,6 +62,7 @@ class CompanyDocument(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     file_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     file_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     extracted_text: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    risk_analysis: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)  # AI Risk Radar output
 
     company: Mapped[RegisteredCompany] = relationship("RegisteredCompany", back_populates="documents")
 

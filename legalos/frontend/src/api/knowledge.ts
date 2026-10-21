@@ -12,6 +12,31 @@ export interface AddressInfo {
   formatted?: string;
 }
 
+export interface RiskClause {
+  clause: string;
+  reason: string;
+  severity: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
+export interface ComplianceGap {
+  gap: string;
+  detail: string;
+}
+
+export interface SuggestedFix {
+  issue: string;
+  fix: string;
+}
+
+export interface RiskAnalysis {
+  risk_score: number;
+  classification: string;
+  critical_clauses: RiskClause[];
+  compliance_gaps: ComplianceGap[];
+  strengths: string[];
+  suggested_fixes: SuggestedFix[];
+}
+
 export interface CompanyDocument {
   id: string;
   company_id: string;
@@ -23,6 +48,7 @@ export interface CompanyDocument {
   file_type?: string;
   file_path?: string;
   extracted_text?: string;
+  risk_analysis?: RiskAnalysis;
   created_at: string;
 }
 
@@ -124,11 +150,13 @@ export const deleteCompanyDocument = async (documentId: string): Promise<void> =
 
 export const askKnowledgeAI = async (
   question: string,
-  companyId?: string
+  companyId?: string,
+  documentId?: string
 ): Promise<AskKnowledgeResponse> => {
   const response = await apiClient.post<AskKnowledgeResponse>('/api/v1/knowledge/ask', {
     question,
-    company_id: companyId
+    company_id: companyId,
+    document_id: documentId
   });
   return response.data;
 };

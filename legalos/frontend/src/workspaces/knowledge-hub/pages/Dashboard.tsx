@@ -25,12 +25,20 @@ import {
   Layers,
   RefreshCw,
   Bot,
-  User
+  User,
+  Shield,
+  AlertCircle,
+  CheckCircle,
+  Lightbulb,
+  X,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { 
   RegisteredCompany, 
   CompanyProfilePreview, 
   GroundTruthExcerpt,
+  RiskAnalysis,
   previewCompanyGstin, 
   registerCompany, 
   getRegisteredCompanies, 
@@ -140,6 +148,178 @@ function formatInline(text: string): React.ReactNode[] {
 }
 
 
+// ---------------------------------------------------------------------------
+// Risk Score Gauge (SVG, no library needed)
+// ---------------------------------------------------------------------------
+const RiskGauge: React.FC<{ score: number }> = ({ score }) => {
+  const r = 54;
+  const circumference = Math.PI * r; // half circle
+  const offset = circumference - (score / 100) * circumference;
+  const color = score >= 70 ? '#ef4444' : score >= 40 ? '#f59e0b' : '#22c55e';
+  const label = score >= 70 ? 'High Risk' : score >= 40 ? 'Medium Risk' : 'Low Risk';
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <svg width="128" height="80" viewBox="0 0 128 80">
+        {/* Track */}
+        <path d="M 10,64 A 54,54 0 0,1 118,64" fill="none" stroke="#e2e8f0" strokeWidth="12" strokeLinecap="round" />
+        {/* Fill */}
+        <path
+          d="M 10,64 A 54,54 0 0,1 118,64"
+          fill="none"
+          stroke={color}
+          strokeWidth="12"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          style={{ transition: 'stroke-dashoffset 1.2s ease-out' }}
+        />
+        <text x="64" y="58" textAnchor="middle" fontSize="22" fontWeight="bold" fill={color}>{score}</text>
+        <text x="64" y="72" textAnchor="middle" fontSize="9" fill="#94a3b8">/ 100</text>
+      </svg>
+      <span className="text-xs font-bold" style={{ color }}>{label}</span>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Risk Radar Modal
+// ---------------------------------------------------------------------------
+const RiskRadarModal: React.FC<{ risk: RiskAnalysis; docTitle: string; onClose: () => void }> = ({ risk, docTitle, onClose }) => {
+  const [openSection, setOpenSection] = useState<string | null>('critical');
+  const toggle = (s: string) => setOpenSection(prev => prev === s ? null : s);
+
+  const SectionHeader: React.FC<{ id: string; label: string; count: number; color: string; icon: React.ReactNode }> = ({ id, label, count, color, icon }) => (
+    <button
+      onClick={() => toggle(id)}
+      className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${openSection === id ? `${color} shadow-sm` : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}
+    >
+      <div className="flex items-center gap-2">
+        {icon}
+        <span className="text-sm font-bold text-slate-800">{label}</span>
+        <span className="text-[10px] font-bold bg-white/70 text-slate-700 px-2 py-0.5 rounded-full">{count}</span>
+      </div>
+      {openSection === id ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+    </button>
+  );
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        {/* Modal Header */}
+        <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10 rounded-t-2xl">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-rose-500 to-orange-500 text-white rounded-xl shadow-md">
+              <Shield className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">AI Risk & Compliance Radar</h3>
+              <p className="text-[11px] text-slate-500 truncate max-w-xs">{docTitle}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5">
+          {/* Score + Classification */}
+          <div className="flex flex-col sm:flex-row items-center gap-6 p-5 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl border border-slate-200">
+            <RiskGauge score={risk.risk_score} />
+            <div className="flex-1 space-y-2">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Document Classification</span>
+                <span className="inline-flex items-center gap-1.5 mt-1 px-3 py-1.5 bg-indigo-100 text-indigo-800 text-sm font-bold rounded-xl border border-indigo-200">
+                  <Tag className="w-3.5 h-3.5" />
+                  {risk.classification}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                This document was automatically classified and scanned for legal risks, compliance gaps, and protective clauses using LegalOS AI.
+              </p>
+            </div>
+          </div>
+
+          {/* Critical Clauses */}
+          <div className="space-y-2">
+            <SectionHeader id="critical" label="Critical Clauses" count={risk.critical_clauses.length} color="bg-rose-50 border-rose-200" icon={<AlertCircle className="w-4 h-4 text-rose-600" />} />
+            {openSection === 'critical' && (
+              <div className="space-y-2 pl-2">
+                {risk.critical_clauses.length === 0
+                  ? <p className="text-xs text-slate-500 pl-3">No critical clauses detected.</p>
+                  : risk.critical_clauses.map((c, i) => (
+                    <div key={i} className="p-3 bg-rose-50 border border-rose-200 rounded-xl">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase ${c.severity === 'HIGH' ? 'bg-rose-600 text-white' : 'bg-amber-500 text-white'}`}>{c.severity}</span>
+                        <span className="text-xs font-bold text-slate-800">{c.clause}</span>
+                      </div>
+                      <p className="text-[11px] text-rose-700 leading-relaxed">{c.reason}</p>
+                    </div>
+                  ))
+                }
+              </div>
+            )}
+          </div>
+
+          {/* Compliance Gaps */}
+          <div className="space-y-2">
+            <SectionHeader id="gaps" label="Compliance Gaps" count={risk.compliance_gaps.length} color="bg-amber-50 border-amber-200" icon={<AlertTriangle className="w-4 h-4 text-amber-600" />} />
+            {openSection === 'gaps' && (
+              <div className="space-y-2 pl-2">
+                {risk.compliance_gaps.length === 0
+                  ? <p className="text-xs text-slate-500 pl-3">No compliance gaps detected.</p>
+                  : risk.compliance_gaps.map((g, i) => (
+                    <div key={i} className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                      <span className="text-xs font-bold text-amber-800 block mb-0.5">{g.gap}</span>
+                      <p className="text-[11px] text-amber-700 leading-relaxed">{g.detail}</p>
+                    </div>
+                  ))
+                }
+              </div>
+            )}
+          </div>
+
+          {/* Strengths */}
+          <div className="space-y-2">
+            <SectionHeader id="strengths" label="Strengths" count={risk.strengths.length} color="bg-emerald-50 border-emerald-200" icon={<CheckCircle className="w-4 h-4 text-emerald-600" />} />
+            {openSection === 'strengths' && (
+              <div className="space-y-2 pl-2">
+                {risk.strengths.length === 0
+                  ? <p className="text-xs text-slate-500 pl-3">No strengths identified.</p>
+                  : risk.strengths.map((s, i) => (
+                    <div key={i} className="flex items-start gap-2 p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-600 mt-0.5 flex-shrink-0" />
+                      <p className="text-[11px] text-emerald-800 leading-relaxed">{s}</p>
+                    </div>
+                  ))
+                }
+              </div>
+            )}
+          </div>
+
+          {/* Suggested Fixes */}
+          {risk.suggested_fixes.length > 0 && (
+            <div className="space-y-2">
+              <SectionHeader id="fixes" label="Suggested Fixes" count={risk.suggested_fixes.length} color="bg-indigo-50 border-indigo-200" icon={<Lightbulb className="w-4 h-4 text-indigo-600" />} />
+              {openSection === 'fixes' && (
+                <div className="space-y-2 pl-2">
+                  {risk.suggested_fixes.map((f, i) => (
+                    <div key={i} className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl">
+                      <span className="text-xs font-bold text-indigo-800 block mb-1">Re: {f.issue}</span>
+                      <p className="text-[11px] text-indigo-700 leading-relaxed italic">"{f.fix}"</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 export const KnowledgeDashboard: React.FC = () => {
   const [companies, setCompanies] = useState<RegisteredCompany[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
@@ -161,24 +341,32 @@ export const KnowledgeDashboard: React.FC = () => {
   const [docCategory, setDocCategory] = useState<string>('Corporate Policy');
   const [uploadingDoc, setUploadingDoc] = useState<boolean>(false);
   const [docUploadError, setDocUploadError] = useState<string | null>(null);
+  const [analysing, setAnalysing] = useState<boolean>(false); // Risk analysis in progress
   
   // Document Deletion State
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
 
+  // Risk Radar Modal State
+  const [riskModalDoc, setRiskModalDoc] = useState<{ risk: RiskAnalysis; title: string } | null>(null);
+
   // AI Q&A Chat State
   const [question, setQuestion] = useState<string>('');
   const [asking, setAsking] = useState<boolean>(false);
+  const [selectedDocScope, setSelectedDocScope] = useState<string>('all');
+  const [docSearchQuery, setDocSearchQuery] = useState<string>('');
+  const [docTypeFilter, setDocTypeFilter] = useState<'ALL' | 'PDF' | 'DOCX' | 'CSV' | 'EXCEL'>('ALL');
   const [chatHistory, setChatHistory] = useState<Array<{
     sender: 'user' | 'ai';
     text: string;
     sources?: string[];
     excerpts?: GroundTruthExcerpt[];
     timestamp?: string;
-  }>>([]);
+  }>>([]); 
   const [copiedMsgIdx, setCopiedMsgIdx] = useState<number | null>(null);
 
   const [copied, setCopied] = useState<boolean>(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
 
   useEffect(() => {
     fetchCompanies();
@@ -298,7 +486,10 @@ export const KnowledgeDashboard: React.FC = () => {
         docTitle.trim() || selectedFile.name,
         docCategory
       );
+      setUploadingDoc(false);
+      setAnalysing(true); // show analysis spinner after upload
       await fetchCompanies();
+      setAnalysing(false);
       setShowDocModal(false);
       setSelectedFile(null);
       setDocTitle('');
@@ -306,6 +497,7 @@ export const KnowledgeDashboard: React.FC = () => {
       setDocUploadError(err?.response?.data?.detail || 'Failed to parse and upload document.');
     } finally {
       setUploadingDoc(false);
+      setAnalysing(false);
     }
   };
 
@@ -321,7 +513,8 @@ export const KnowledgeDashboard: React.FC = () => {
     
     try {
       setAsking(true);
-      const res = await askKnowledgeAI(userMsg, selectedCompanyId || undefined);
+      const docScopeId = selectedDocScope !== 'all' ? selectedDocScope : undefined;
+      const res = await askKnowledgeAI(userMsg, selectedCompanyId || undefined, docScopeId);
       setChatHistory(prev => [
         ...prev, 
         { 
@@ -354,6 +547,15 @@ export const KnowledgeDashboard: React.FC = () => {
 
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
 
+  const filteredDocs = (selectedCompany?.documents || []).filter(d => {
+    const q = docSearchQuery.trim().toLowerCase();
+    const matchesSearch = !q ||
+      d.title.toLowerCase().includes(q) ||
+      (d.file_name && d.file_name.toLowerCase().includes(q)) ||
+      (d.summary && d.summary.toLowerCase().includes(q));
+    const matchesType = docTypeFilter === 'ALL' || d.file_type?.toUpperCase() === docTypeFilter;
+    return matchesSearch && matchesType;
+  });
   const copyGstin = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -604,7 +806,49 @@ export const KnowledgeDashboard: React.FC = () => {
                     </button>
                   </div>
 
-                  {selectedCompany.documents.length === 0 ? (
+                  {/* Analysis in progress banner */}
+                  {analysing && (
+                    <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-xl flex items-center gap-3 animate-pulse">
+                      <Loader2 className="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-bold text-indigo-800">🔍 AI Risk Radar Analysing Document...</p>
+                        <p className="text-[10px] text-indigo-600">Scanning for critical clauses, compliance gaps, and contract strengths. This takes 5–10 seconds.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Document Search & Filter Bar */}
+                  {selectedCompany.documents.length > 0 && (
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <div className="relative flex-1">
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={docSearchQuery}
+                          onChange={(e) => setDocSearchQuery(e.target.value)}
+                          placeholder="Search documents by title, file name or summary..."
+                          className="w-full pl-9 pr-3 py-1.5 text-xs bg-white rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1 overflow-x-auto">
+                        {(['ALL', 'PDF', 'DOCX', 'CSV', 'EXCEL'] as const).map((ft) => (
+                          <button
+                            key={ft}
+                            onClick={() => setDocTypeFilter(ft)}
+                            className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                              docTypeFilter === ft
+                                ? 'bg-indigo-600 text-white shadow-xs'
+                                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                            }`}
+                          >
+                            {ft}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {filteredDocs.length === 0 && selectedCompany.documents.length === 0 ? (
                     <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300 space-y-3">
                       <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto border border-indigo-100">
                         <UploadCloud className="w-6 h-6" />
@@ -614,9 +858,27 @@ export const KnowledgeDashboard: React.FC = () => {
                         Upload employee policies, NDAs, tax filings, or financial spreadsheets (.pdf, .docx, .csv, .xlsx). The AI Assistant will use these files as strict facts to answer your queries.
                       </p>
                     </div>
+                  ) : filteredDocs.length === 0 ? (
+                    <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300 space-y-2">
+                      <Search className="w-6 h-6 text-slate-400 mx-auto" />
+                      <p className="text-xs font-semibold text-slate-700">No documents match your search or filter</p>
+                      <button
+                        onClick={() => { setDocSearchQuery(''); setDocTypeFilter('ALL'); }}
+                        className="text-xs text-indigo-600 hover:underline cursor-pointer"
+                      >
+                        Reset filters
+                      </button>
+                    </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {selectedCompany.documents.map((doc) => (
+                      {filteredDocs.map((doc) => {
+                        const risk = doc.risk_analysis;
+                        const riskColor = !risk ? '' : risk.risk_score >= 70
+                          ? 'bg-rose-100 text-rose-700 border-rose-300'
+                          : risk.risk_score >= 40
+                          ? 'bg-amber-100 text-amber-700 border-amber-300'
+                          : 'bg-emerald-100 text-emerald-700 border-emerald-300';
+                        return (
                         <div key={doc.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 transition-all flex items-start gap-3 relative group">
                           <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-sm flex-shrink-0">
                             {getFileIcon(doc.file_type)}
@@ -631,6 +893,17 @@ export const KnowledgeDashboard: React.FC = () => {
                                   {doc.file_type}
                                 </span>
                               )}
+                              {/* Risk Score Badge */}
+                              {risk && (
+                                <button
+                                  onClick={() => setRiskModalDoc({ risk, title: doc.title })}
+                                  className={`inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full border cursor-pointer hover:shadow-sm transition-all ${riskColor}`}
+                                  title="View AI Risk Radar"
+                                >
+                                  <Shield className="w-2.5 h-2.5" />
+                                  Risk: {risk.risk_score}
+                                </button>
+                              )}
                             </div>
                             <h4 className="text-sm font-bold text-slate-900 truncate mt-1">{doc.title}</h4>
                             {doc.file_name && (
@@ -640,6 +913,13 @@ export const KnowledgeDashboard: React.FC = () => {
                               <p className="text-xs text-slate-600 line-clamp-2 mt-1 bg-white p-2 rounded border border-slate-200/60 leading-relaxed font-sans">
                                 {doc.summary}
                               </p>
+                            )}
+                            {/* Risk classification tag */}
+                            {risk?.classification && (
+                              <span className="inline-flex items-center gap-1 mt-1.5 text-[9px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                                <Tag className="w-2.5 h-2.5" />
+                                {risk.classification}
+                              </span>
                             )}
                           </div>
                           
@@ -657,7 +937,8 @@ export const KnowledgeDashboard: React.FC = () => {
                             )}
                           </button>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -753,12 +1034,24 @@ export const KnowledgeDashboard: React.FC = () => {
 
                             {msg.sender === 'user' ? (
                               <p className="whitespace-pre-wrap font-sans text-xs text-slate-100">{msg.text}</p>
+                            ) : msg.text.toLowerCase().includes('do not contain information') || msg.text.toLowerCase().includes('no direct matching text excerpts') ? (
+                              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 space-y-1.5">
+                                <div className="flex items-center gap-1.5 font-bold text-xs text-amber-800">
+                                  <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                                  <span>No matching content in uploaded documents</span>
+                                </div>
+                                <p className="text-xs text-amber-700 leading-relaxed font-sans">
+                                  The uploaded documents do not contain information to answer this question. Try uploading additional files or rephrasing your question.
+                                </p>
+                              </div>
                             ) : (
                               <FormattedChatMessage content={msg.text} />
                             )}
                             
-                            {/* Ground Truth Excerpts Box */}
-                            {msg.excerpts && msg.excerpts.length > 0 && (
+                            {/* Ground Truth Excerpts Box - only shown when excerpts exist and content is found */}
+                            {!msg.text.toLowerCase().includes('do not contain information') &&
+                             !msg.text.toLowerCase().includes('no direct matching text excerpts') &&
+                             msg.excerpts && msg.excerpts.length > 0 && (
                               <div className="mt-3 pt-3 border-t border-slate-200/80 space-y-2">
                                 <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block">Ground Truth Document Excerpts:</span>
                                 {msg.excerpts.map((ex, i) => (
@@ -808,8 +1101,27 @@ export const KnowledgeDashboard: React.FC = () => {
                     <div ref={chatEndRef} />
                   </div>
 
+                  {/* Scoped Document Selector (Phase 3.1) */}
+                  {selectedCompany?.documents && selectedCompany.documents.length > 0 && (
+                    <div className="pt-2 pb-1 flex items-center gap-2 text-[11px] border-t border-slate-100">
+                      <span className="font-semibold text-slate-500 whitespace-nowrap">Ask about:</span>
+                      <select
+                        value={selectedDocScope}
+                        onChange={(e) => setSelectedDocScope(e.target.value)}
+                        className="w-full text-xs py-1 px-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 truncate"
+                      >
+                        <option value="all">All Documents ({selectedCompany.documents.length})</option>
+                        {selectedCompany.documents.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            📄 {d.title}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   {/* Input Box */}
-                  <form onSubmit={(e) => { e.preventDefault(); handleAskAI(); }} className="pt-3 border-t border-slate-100 flex gap-2">
+                  <form onSubmit={(e) => { e.preventDefault(); handleAskAI(); }} className="pt-2 border-t border-slate-100 flex gap-2">
                     <input
                       type="text"
                       value={question}
@@ -1041,6 +1353,15 @@ export const KnowledgeDashboard: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Risk Radar Modal — rendered on top of everything */}
+      {riskModalDoc && (
+        <RiskRadarModal
+          risk={riskModalDoc.risk}
+          docTitle={riskModalDoc.title}
+          onClose={() => setRiskModalDoc(null)}
+        />
       )}
     </div>
   );

@@ -49,6 +49,34 @@ Analyze this contract clause:
 """
 
 
+# Batch clause analysis prompts (analyzes up to 8 clauses at once to avoid rate limits)
+BATCH_CLAUSE_ANALYSIS_SYSTEM = """
+You are an expert legal compliance officer specializing in Indian contract law.
+Analyze each of the provided contract clauses.
+For each clause:
+1. Provide a concise, clear one-sentence summary.
+2. Classify the risk type: exactly one of ['penalty', 'lock_in', 'indemnity', 'termination', 'none'].
+3. Assign a Risk Score as an integer between 0 and 100 (0-29 Low, 30-69 Medium, 70-100 High).
+
+Respond strictly in JSON format as a JSON array of objects:
+[
+  {
+    "clause_idx": 0,
+    "summary": "one sentence summary",
+    "risk_type": "penalty | lock_in | indemnity | termination | none",
+    "risk_score": 45
+  }
+]
+Return ONLY valid JSON array with exactly the same number of items as the input clauses.
+"""
+
+BATCH_CLAUSE_ANALYSIS_USER = """
+Analyze the following {n} contract clauses:
+{clauses_block}
+"""
+
+
+
 # System prompt for generating negotiation suggestions
 NEGOTIATION_SUGGESTION_SYSTEM = """
 You are an expert commercial attorney representing an Indian SME.

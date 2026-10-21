@@ -15,6 +15,7 @@ import {
   FileText,
   Clock,
   ChevronRight,
+  ChevronLeft,
   X,
   RefreshCw,
   Info
@@ -31,6 +32,165 @@ import {
   initStatutoryTasksByGstin
 } from '../api';
 import { ComplianceTask, ComplianceDocumentAnalysis } from '@/api/types';
+
+const ComplianceCalendarView: React.FC<{
+  tasks: ComplianceTask[];
+  currentDate: Date;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+  onToday: () => void;
+  onToggleTask: (id: string, status: string) => void;
+}> = ({ tasks, currentDate, onPrevMonth, onNextMonth, onToday, onToggleTask }) => {
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const paddingArray = Array.from({ length: firstDayIndex }, (_, i) => i);
+
+  const today = new Date();
+
+  return (
+    <div className="p-5 space-y-4">
+      {/* Calendar Month Navigation Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h3 className="text-base font-bold text-slate-800">
+            {monthNames[month]} {year}
+          </h3>
+          <button
+            onClick={onToday}
+            className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
+          >
+            Today
+          </button>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onPrevMonth}
+            className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 cursor-pointer"
+            title="Previous Month"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onNextMonth}
+            className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 cursor-pointer"
+            title="Next Month"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Days of Week Header */}
+      <div className="grid grid-cols-7 gap-1 text-center font-bold text-[11px] text-slate-400 uppercase py-1 border-b border-slate-100">
+        <span>Sun</span>
+        <span>Mon</span>
+        <span>Tue</span>
+        <span>Wed</span>
+        <span>Thu</span>
+        <span>Fri</span>
+        <span>Sat</span>
+      </div>
+
+      {/* Grid of Days */}
+      <div className="grid grid-cols-7 gap-1">
+        {paddingArray.map((p) => (
+          <div key={`pad-${p}`} className="h-24 bg-slate-50/40 rounded-lg border border-transparent p-1" />
+        ))}
+
+        {daysArray.map((day) => {
+          const isCurrentToday = today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
+
+          const dayTasks = tasks.filter((t) => {
+            if (!t.due_date) return false;
+            const d = new Date(t.due_date);
+            return d.getDate() === day && d.getMonth() === month && d.getFullYear() === year;
+          });
+
+          return (
+            <div
+              key={`day-${day}`}
+              className={`h-24 rounded-lg border p-1.5 flex flex-col justify-between transition-colors overflow-hidden ${
+                isCurrentToday
+                  ? 'border-blue-500 bg-blue-50/30 font-bold'
+                  : dayTasks.length > 0
+                  ? 'border-slate-200 bg-white hover:border-slate-300'
+                  : 'border-slate-100 bg-slate-50/50'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className={`text-xs ${isCurrentToday ? 'text-blue-600 font-extrabold' : 'text-slate-600'}`}>
+                  {day}
+                </span>
+                {dayTasks.length > 0 && (
+                  <span className="text-[9px] font-mono px-1 rounded bg-slate-100 text-slate-600">
+                    {dayTasks.length}
+                  </span>
+                )}
+              </div>
+
+              {/* Task badges list */}
+              <div className="space-y-1 overflow-y-auto scrollbar-none max-h-16 mt-0.5">
+                {dayTasks.map((task) => {
+                  const isCompleted = task.status === 'completed';
+                  const taskDueDate = task.due_date ? new Date(task.due_date) : null;
+                  const isOverdue = taskDueDate && taskDueDate < today && !isCompleted;
+                  const diffDays = taskDueDate ? Math.ceil((taskDueDate.getTime() - today.getTime()) / (1000 * 3600 * 24)) : 999;
+                  const isDueSoon = !isCompleted && !isOverdue && diffDays <= 7 && diffDays >= 0;
+
+                  const badgeColor = isCompleted
+                    ? 'bg-slate-100 text-slate-500 border-slate-200 line-through'
+                    : isOverdue
+                    ? 'bg-rose-50 text-rose-700 border-rose-200 font-bold'
+                    : isDueSoon
+                    ? 'bg-amber-50 text-amber-800 border-amber-200 font-bold'
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+
+                  return (
+                    <button
+                      key={task.id}
+                      onClick={() => onToggleTask(task.id, task.status)}
+                      title={`${task.title} (${task.status}) - click to toggle`}
+                      className={`w-full text-left truncate text-[10px] px-1.5 py-0.5 rounded border transition-opacity hover:opacity-80 cursor-pointer block ${badgeColor}`}
+                    >
+                      {task.title}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 text-[11px] text-slate-500 pt-2 border-t border-slate-100 flex-wrap">
+        <span className="font-semibold text-slate-600">Legend:</span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
+          <span>Overdue</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
+          <span>Due within 7 days</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+          <span>Upcoming / Completed</span>
+        </span>
+      </div>
+    </div>
+  );
+};
 
 export const Dashboard: React.FC = () => {
   const [tasks, setTasks] = useState<ComplianceTask[]>([]);
@@ -93,7 +253,9 @@ export const Dashboard: React.FC = () => {
   const [showAnalysisDrawer, setShowAnalysisDrawer] = useState(false);
   const [loadingAnalysisDetail, setLoadingAnalysisDetail] = useState(false);
 
-  // Filters
+  // Filters & View Mode
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [calDate, setCalDate] = useState<Date>(new Date());
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -523,7 +685,28 @@ export const Dashboard: React.FC = () => {
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             {/* Table Header Filter controls */}
             <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-4">
-              <h4 className="font-bold text-slate-800 text-sm">Compliance Checklist</h4>
+              <div className="flex items-center gap-3">
+                <h4 className="font-bold text-slate-800 text-sm">Compliance Obligations</h4>
+                <div className="flex items-center bg-slate-200/80 p-0.5 rounded-lg">
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                      viewMode === 'list' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    List View
+                  </button>
+                  <button
+                    onClick={() => setViewMode('calendar')}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
+                      viewMode === 'calendar' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    Calendar View
+                  </button>
+                </div>
+              </div>
               <div className="flex items-center gap-2">
                 <select
                   value={categoryFilter}
@@ -549,13 +732,24 @@ export const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Tasks list */}
-            {loadingTasks ? (
-              <div className="p-10 text-center flex flex-col items-center justify-center text-slate-400">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-2" />
-                <span className="text-xs font-medium">Loading compliance calendar...</span>
-              </div>
-            ) : filteredTasks.length === 0 ? (
+            {/* Calendar View Mode */}
+            {viewMode === 'calendar' ? (
+              <ComplianceCalendarView
+                tasks={filteredTasks}
+                currentDate={calDate}
+                onPrevMonth={() => setCalDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
+                onNextMonth={() => setCalDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
+                onToday={() => setCalDate(new Date())}
+                onToggleTask={handleToggleTask}
+              />
+            ) : (
+              /* Tasks list */
+              loadingTasks ? (
+                <div className="p-10 text-center flex flex-col items-center justify-center text-slate-400">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-2" />
+                  <span className="text-xs font-medium">Loading compliance calendar...</span>
+                </div>
+              ) : filteredTasks.length === 0 ? (
               <div className="p-12 text-center text-slate-400 flex flex-col items-center justify-center">
                 <CheckCircle className="w-12 h-12 text-slate-300 mb-2" />
                 <h5 className="font-bold text-slate-700 text-sm">No tasks found</h5>
@@ -654,7 +848,7 @@ export const Dashboard: React.FC = () => {
                   );
                 })}
               </div>
-            )}
+            ))}
           </div>
         </div>
 

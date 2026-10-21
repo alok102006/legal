@@ -10,6 +10,7 @@ from app.core.llm import llm_client
 from app.core.llm.prompts.contract_intel_prompts import (
     CONTRACT_METADATA_SYSTEM, CONTRACT_METADATA_USER,
     CLAUSE_ANALYSIS_SYSTEM, CLAUSE_ANALYSIS_USER,
+    BATCH_CLAUSE_ANALYSIS_SYSTEM, BATCH_CLAUSE_ANALYSIS_USER,
     NEGOTIATION_SUGGESTION_SYSTEM
 )
 from app.shared.storage import file_storage
@@ -68,45 +69,74 @@ async def run_async_contract_analysis(
             if not processed_chunks:
                 raise ValueError("No text clauses could be parsed from the document.")
             
-            # 2. Analyze each clause with LLM
-            clauses_to_insert = []
-            for chunk in processed_chunks:
-                clause_text = chunk["text"]
-                clause_idx = chunk["clause_index"]
-                point_id = chunk["point_id"]
-                
-                print(f"[SERVICE] Analyzing clause index {clause_idx}...")
-                
-                # Setup user prompt
-                prompt = CLAUSE_ANALYSIS_USER.format(clause_text=clause_text)
-                
+            # 2. Analyze clauses in batches of 8 using LLM (avoids 429 rate limit & cuts runtime from 120s to <25s)
+            BATCH_SIZE = 8
+            for b_start in range(0, len(processed_chunks), BATCH_SIZE):
+                batch_chunks = processed_chunks[b_start:b_start + BATCH_SIZE]
+                print(f"[SERVICE] Analyzing clause batch {b_start} to {b_start + len(batch_chunks)} of {len(processed_chunks)}...")
+
+                clauses_block_lines = []
+                for chunk in batch_chunks:
+                    c_idx = chunk["clause_index"]
+                    c_text = chunk["text"]
+                    clauses_block_lines.append(f"--- CLAUSE {c_idx} ---\n{c_text}")
+                clauses_block = "\n\n".join(clauses_block_lines)
+
+                prompt = BATCH_CLAUSE_ANALYSIS_USER.format(n=len(batch_chunks), clauses_block=clauses_block)
+
+                analyses_map = {}
+                parsed_list = []
                 try:
                     response_json = llm_client.generate(
                         prompt=prompt,
-                        system=CLAUSE_ANALYSIS_SYSTEM,
+                        system=BATCH_CLAUSE_ANALYSIS_SYSTEM,
                         json_mode=True,
                         workspace="contract_intelligence"
                     )
-                    analysis = json.loads(response_json)
-                except Exception as clause_err:
-                    print(f"[SERVICE] Error analyzing clause {clause_idx}: {clause_err}. Using fallback.")
-                    analysis = {
-                        "summary": clause_text[:120] + "...",
-                        "risk_type": "none",
-                        "risk_score": 0
-                    }
-                
-                # Save clause db record
-                await repository.add_clause(
-                    session=session,
-                    contract_id=contract_id,
-                    clause_index=clause_idx,
-                    raw_text=clause_text,
-                    summary=analysis.get("summary", ""),
-                    risk_type=analysis.get("risk_type", "none"),
-                    risk_score=analysis.get("risk_score", 0),
-                    qdrant_point_id=uuid.UUID(point_id) if point_id else None
-                )
+                    parsed = json.loads(response_json)
+                    if isinstance(parsed, list):
+                        parsed_list = parsed
+                        for item in parsed:
+                            idx = item.get("clause_idx")
+                            if idx is not None:
+                                analyses_map[idx] = item
+                    elif isinstance(parsed, dict):
+                        # Handle potential object wrapping e.g. {"clauses": [...]}
+                        for val in parsed.values():
+                            if isinstance(val, list):
+                                parsed_list = val
+                                for item in val:
+                                    if isinstance(item, dict) and item.get("clause_idx") is not None:
+                                        analyses_map[item["clause_idx"]] = item
+                except Exception as batch_err:
+                    print(f"[SERVICE] Batch LLM analysis failed: {batch_err}. Using fallback.")
+
+                for i, chunk in enumerate(batch_chunks):
+                    clause_idx = chunk["clause_index"]
+                    clause_text = chunk["text"]
+                    point_id = chunk.get("point_id")
+
+                    analysis = analyses_map.get(clause_idx)
+                    if not analysis and i < len(parsed_list):
+                        analysis = parsed_list[i]
+
+                    if not analysis:
+                        analysis = {
+                            "summary": clause_text[:120] + "...",
+                            "risk_type": "none",
+                            "risk_score": 0
+                        }
+
+                    await repository.add_clause(
+                        session=session,
+                        contract_id=contract_id,
+                        clause_index=clause_idx,
+                        raw_text=clause_text,
+                        summary=analysis.get("summary", ""),
+                        risk_type=analysis.get("risk_type", "none"),
+                        risk_score=int(analysis.get("risk_score", 0)),
+                        qdrant_point_id=uuid.UUID(point_id) if point_id else None
+                    )
             
             # 3. Extract general metadata (Contract Title and Counterparty)
             # We take the first 4000 characters of the document text for context

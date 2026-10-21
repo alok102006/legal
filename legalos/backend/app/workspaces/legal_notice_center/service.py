@@ -5,6 +5,8 @@ from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.shared.db.session import async_session_maker
+from app.shared.storage import file_storage
+from app.shared.exceptions import NotFoundException
 from app.core.rag import rag_pipeline
 from app.core.llm import llm_client
 from app.core.llm.prompts.legal_notice_prompts import (
@@ -26,7 +28,7 @@ async def create_and_start_analysis(
     and returns the Notice object.
     """
     # 1. Store core Document record
-    storage_path = f"uploads/notices/{uuid.uuid4()}_{filename}"
+    storage_path = await file_storage.save_file(filename, file_bytes)
     doc = await repository.create_document(
         session=session,
         workspace="legal_notice_center",
@@ -202,3 +204,39 @@ async def list_notices(
 ) -> List[dict]:
     """Lists notice summaries."""
     return await repository.list_notices_with_filenames(session)
+
+
+async def delete_notice_and_document(session: AsyncSession, notice_id: uuid.UUID) -> None:
+    """Deletes notice, associated document from SQL, associated points from Qdrant, and disk file."""
+    import os
+    from app.shared.db.models import Document
+    from app.core.vectorstore import retrieval_service
+
+    notice = await repository.get_notice_by_id(session, notice_id)
+    if not notice:
+        raise NotFoundException(f"Notice with ID {notice_id} not found.")
+
+    document_id = notice.document_id
+
+    # 1. Delete vectors from Qdrant for legal_notices collection
+    if document_id:
+        try:
+            retrieval_service.delete_by_document("legal_notices", str(document_id))
+            print(f"[NOTICE SERVICE] Purged Qdrant points for notice document {document_id}")
+        except Exception as qdrant_err:
+            print(f"[NOTICE SERVICE] Error deleting points from Qdrant: {qdrant_err}")
+
+    # 2. Delete file from disk if present
+    if document_id:
+        doc = await session.get(Document, document_id)
+        if doc and doc.storage_path and os.path.exists(doc.storage_path):
+            try:
+                os.remove(doc.storage_path)
+                print(f"[NOTICE SERVICE] Deleted notice disk file: {doc.storage_path}")
+            except Exception as disk_err:
+                print(f"[NOTICE SERVICE] Error deleting file from disk: {disk_err}")
+        if doc:
+            await session.delete(doc)
+
+    await session.delete(notice)
+

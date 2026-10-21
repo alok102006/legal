@@ -51,8 +51,37 @@ async def verify_and_log_vendor(
         status_upper = status_str.upper().strip()
         is_valid = status_upper == "ACTIVE"
         
-        # Trust score computation: 95 if active, 20 if cancelled/suspended
-        trust_score = 95 if is_valid else 20
+        # Multi-factor trust score computation
+        score = 0
+        if is_valid:
+            score += 50
+        elif status_upper in ["CANCELLED", "SUSPENDED"]:
+            score -= 60
+        elif status_upper == "INACTIVE":
+            score -= 30
+
+        if formatted_date:
+            try:
+                from datetime import datetime, date
+                r_date = datetime.strptime(formatted_date, "%Y-%m-%d").date()
+                years = (date.today() - r_date).days / 365.25
+                if years > 3:
+                    score += 20
+                elif years > 1:
+                    score += 10
+            except Exception:
+                pass
+
+        nba = taxpayer.get("nba") or taxpayer.get("nature_of_business") or []
+        nba_str = " ".join(nba) if isinstance(nba, list) else str(nba)
+        if any(w in nba_str.lower() for w in ["trading", "retail", "wholesale", "manufacturing"]):
+            score += 10
+
+        jurisdiction = taxpayer.get("stj") or taxpayer.get("ctj") or taxpayer.get("state_jurisdiction")
+        if jurisdiction:
+            score += 10
+
+        trust_score = max(0, min(100, score))
         
         # Fraud flag if cancelled or suspended (usually means business shut down or flagged)
         fraud_flagged = status_upper in ["CANCELLED", "SUSPENDED"]

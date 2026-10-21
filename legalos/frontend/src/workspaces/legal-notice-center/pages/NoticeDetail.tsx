@@ -9,7 +9,8 @@ import {
   FileText,
   AlertTriangle,
   Building,
-  CheckSquare
+  CheckSquare,
+  Printer
 } from 'lucide-react';
 import { Card } from '@/design-system/components/Card';
 import { Button } from '@/design-system/components/Button';
@@ -199,6 +200,9 @@ export const NoticeDetail: React.FC = () => {
                   </Button>
 
                   <div className="flex gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => window.print()}>
+                      <Printer className="w-4 h-4 mr-1.5" /> Export PDF
+                    </Button>
                     <Button variant="secondary" size="sm" onClick={handleCopy}>
                       {copied ? (
                         <>
@@ -229,6 +233,31 @@ export const NoticeDetail: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Printable Formal Response Letter for PDF Export (window.print) */}
+      <div id="printable-reply-letter" className="hidden print:block p-10 font-serif text-slate-900 leading-relaxed max-w-3xl mx-auto bg-white">
+        <div className="border-b-2 border-slate-900 pb-4 mb-6 text-center">
+          <h1 className="text-2xl font-bold tracking-wide uppercase">FORMAL LEGAL RESPONSE & COUNTER-REPLY</h1>
+          <p className="text-xs text-slate-500 mt-1">Generated via LegalOS Notice Center • Ref ID: {notice.id}</p>
+        </div>
+        <div className="flex justify-between text-xs text-slate-600 mb-6">
+          <span>Date: {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+          <span>Classification: {notice.notice_type?.toUpperCase() || 'LEGAL NOTICE'}</span>
+        </div>
+        <div className="text-sm whitespace-pre-wrap leading-relaxed">
+          {draftText}
+        </div>
+        <div className="mt-16 pt-6 border-t border-slate-300 flex justify-between text-xs text-slate-500">
+          <div>
+            <p className="font-bold text-slate-800">Authorized Signatory</p>
+            <p className="mt-8 text-slate-400">________________________</p>
+          </div>
+          <div className="text-right">
+            <p className="font-bold text-slate-800">Legal Representation</p>
+            <p className="mt-8 text-slate-400">Advocate / Legal Counsel</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

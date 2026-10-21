@@ -2,10 +2,10 @@ import re
 from typing import List, Dict, Any
 
 def clean_text(text: str) -> str:
-    """Basic text cleanup."""
-    # Replace multiple spaces/newlines with single ones
+    """Basic text cleanup — normalises CRLF, tabs and redundant whitespace."""
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
     text = re.sub(r'[ \t]+', ' ', text)
-    text = re.sub(r'\n+', '\n', text)
+    text = re.sub(r'\n{3,}', '\n\n', text)  # collapse triple+ newlines to double
     return text.strip()
 
 
@@ -106,6 +106,87 @@ def chunk_by_paragraph(text: str, max_chars: int = 1500) -> List[Dict[str, Any]]
     return chunks
 
 
+def chunk_by_paragraph_with_overlap(
+    text: str,
+    max_chars: int = 800,
+    overlap_chars: int = 150
+) -> List[Dict[str, Any]]:
+    """
+    Paragraph-aware chunker with a sliding overlap window.
+
+    Works by collecting consecutive paragraphs until the current chunk exceeds
+    `max_chars`, then emits that chunk and starts the next one re-including the
+    last `overlap_chars` worth of text so that semantic context is not lost at
+    boundaries.
+
+    Args:
+        text:          Full extracted document text.
+        max_chars:     Approximate maximum characters per chunk (default 800).
+        overlap_chars: Characters of the previous chunk to carry forward into the
+                       next one (default 150 ~30 tokens).
+    Returns:
+        List of {"clause_index": int, "text": str} dicts.
+    """
+    # Split on one-or-more blank lines to get semantic paragraphs
+    raw_paragraphs = re.split(r'\n[ \t]*\n', text)
+    paragraphs = [clean_text(p) for p in raw_paragraphs if clean_text(p)]
+
+    chunks: List[Dict[str, Any]] = []
+    chunk_index = 0
+    current_parts: List[str] = []
+    current_len = 0
+
+    def _emit(parts: List[str]) -> str:
+        return "\n\n".join(parts)
+
+    for para in paragraphs:
+        para_len = len(para)
+
+        # If adding this paragraph would overflow, flush current chunk first
+        if current_parts and (current_len + para_len) > max_chars:
+            chunk_text = _emit(current_parts)
+            chunks.append({"clause_index": chunk_index, "text": chunk_text})
+            chunk_index += 1
+
+            # Build overlap: take the tail of the emitted chunk up to overlap_chars
+            overlap_seed = chunk_text[-overlap_chars:] if len(chunk_text) > overlap_chars else chunk_text
+            current_parts = [overlap_seed]
+            current_len = len(overlap_seed)
+
+        # If a single paragraph is itself larger than max_chars, split it by chars
+        if para_len > max_chars:
+            # Flush any accumulated context first
+            if current_parts:
+                chunks.append({"clause_index": chunk_index, "text": _emit(current_parts)})
+                chunk_index += 1
+                current_parts = []
+                current_len = 0
+
+            start = 0
+            while start < para_len:
+                end = min(start + max_chars, para_len)
+                slice_text = para[start:end].strip()
+                if slice_text:
+                    chunks.append({"clause_index": chunk_index, "text": slice_text})
+                    chunk_index += 1
+                start = end - overlap_chars  # slide back by overlap
+                if start < 0:
+                    start = 0
+                if start >= para_len:
+                    break
+        else:
+            current_parts.append(para)
+            current_len += para_len
+
+    # Emit any remaining text
+    if current_parts:
+        chunk_text = _emit(current_parts)
+        if chunk_text.strip():
+            chunks.append({"clause_index": chunk_index, "text": chunk_text})
+
+    return chunks
+
+
 def chunk_document(text: str, strategy: str = "clause") -> List[Dict[str, Any]]:
     """
     Dispatches to the correct chunking strategy.
@@ -114,5 +195,7 @@ def chunk_document(text: str, strategy: str = "clause") -> List[Dict[str, Any]]:
         return chunk_by_clause(text)
     elif strategy == "paragraph":
         return chunk_by_paragraph(text)
+    elif strategy == "paragraph_overlap":
+        return chunk_by_paragraph_with_overlap(text)
     else:
         raise ValueError(f"Unknown chunking strategy: {strategy}")
