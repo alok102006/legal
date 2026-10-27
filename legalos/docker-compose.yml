@@ -28,22 +28,32 @@ services:
       - qdrant_data:/qdrant/storage
 
   backend:
+    image: legalos-backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: legalos_backend
     restart: always
+    # Hot reload watches only app code (editing tests/docs must not restart the server and kill running jobs)
+    command: ["sh", "-c", "alembic upgrade head || echo '!!! MIGRATION FAILED - see error above !!!'; uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app"]
     environment:
       - DATABASE_URL=postgresql+asyncpg://legalos:legalos_secure_password@db:5432/legalos
       - QDRANT_URL=http://qdrant:6333
       - QDRANT_API_KEY=
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_API_KEYS=${GEMINI_API_KEYS:-}
+      - GEMINI_FALLBACK_MODELS=${GEMINI_FALLBACK_MODELS:-gemini-3.5-flash-lite,gemini-3.5-flash}
       - LLM_PROVIDER=gemini
+      - GST_API_PROVIDER=${GST_API_PROVIDER:-}
+      - GST_API_KEY=${GST_API_KEY:-}
+      - GST_API_SECRET=${GST_API_SECRET:-}
+      - GST_API_BASE_URL=${GST_API_BASE_URL:-}
+      - GST_API_KEY_HEADER=${GST_API_KEY_HEADER:-}
       - FRONTEND_URL=http://localhost:5173
       - HF_HOME=/app/model_cache
       - SENTENCE_TRANSFORMERS_HOME=/app/model_cache
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"     # set BACKEND_PORT in .env if 8000 is taken by another project
     volumes:
       - model_cache:/app/model_cache
       # Mount source code for local dev reload
@@ -55,6 +65,7 @@ services:
         condition: service_started
 
   frontend:
+    image: legalos-frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -63,7 +74,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=http://localhost:${BACKEND_PORT:-8000}
     volumes:
       - ./frontend:/app
       - /app/node_modules

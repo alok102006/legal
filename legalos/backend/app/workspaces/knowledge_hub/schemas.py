@@ -1,89 +1,136 @@
 import uuid
-from datetime import datetime
-from typing import Optional, List, Dict, Any
+from datetime import date, datetime
+from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 
-class CompanyRegisterRequest(BaseModel):
-    gstin: str = Field(..., description="15-character GSTIN identifier", min_length=15, max_length=15)
-
-
-class CompanyDocumentResponse(BaseModel):
+class DocListItem(BaseModel):
     id: uuid.UUID
-    company_id: uuid.UUID
-    document_id: Optional[uuid.UUID] = None
     title: str
-    document_category: str
-    summary: Optional[str] = None
-    file_name: Optional[str] = None
+    filename: Optional[str] = None
+    category: Optional[str] = None
+    doc_type: Optional[str] = None
+    language: Optional[str] = None
     file_type: Optional[str] = None
-    file_path: Optional[str] = None
-    extracted_text: Optional[str] = None
-    risk_analysis: Optional[Dict[str, Any]] = None  # AI Risk Radar output
+    page_count: Optional[int] = None
+    status: str
+    stage: Optional[str] = None
+    review_state: str = "pending"
+    expiry_date: Optional[date] = None
+    expiry_label: Optional[str] = None
+    concern_count: int = 0
+    error_kind: Optional[str] = None
+    error_message: Optional[str] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+
+class ConcernOut(BaseModel):
+    title: str
+    why_it_matters: str
+    quote: str
+    page: Optional[int] = None
+    verified: bool = False
+    exact: bool = False
 
 
-class RegisteredCompanyResponse(BaseModel):
+class FactOut(BaseModel):
+    label: str
+    value: str
+
+
+class ChunkOut(BaseModel):
+    chunk_index: int
+    page: Optional[int] = None
+    section: Optional[str] = None
+    text: str
+
+
+class DocDetail(DocListItem):
+    summary_points: List[str] = []
+    key_facts: List[FactOut] = []
+    concerns: List[ConcernOut] = []
+    missing_items: List[str] = []
+    suggested_questions: List[str] = []
+    review_error: Optional[str] = None
+    chunk_count: int = 0
+    in_calendar: bool = False
+    ocr_used: bool = False
+    chunks: List[ChunkOut] = []
+
+
+class CollectionOut(BaseModel):
+    name: str
+    count: int
+    ready: int
+
+
+class ConversationOut(BaseModel):
     id: uuid.UUID
-    gstin: str
-    legal_name: str
-    trade_name: Optional[str] = None
-    entity_type: Optional[str] = None
-    registration_date: Optional[str] = None
-    taxpayer_type: Optional[str] = None
-    status: str
-    state_jurisdiction: Optional[str] = None
-    center_jurisdiction: Optional[str] = None
-    principal_address: Optional[Dict[str, Any]] = None
-    nature_of_business: Optional[List[str]] = None
-    registered_by: Optional[uuid.UUID] = None
+    title: str
+    collection: Optional[str] = None
     created_at: datetime
     updated_at: datetime
-    documents: List[CompanyDocumentResponse] = []
-
-    class Config:
-        from_attributes = True
 
 
-class CompanyProfilePreview(BaseModel):
-    gstin: str
-    legal_name: str
-    trade_name: Optional[str] = None
-    entity_type: Optional[str] = None
-    registration_date: Optional[str] = None
-    taxpayer_type: Optional[str] = None
-    status: str
-    state_jurisdiction: Optional[str] = None
-    center_jurisdiction: Optional[str] = None
-    principal_address: Optional[Dict[str, Any]] = None
-    nature_of_business: Optional[List[str]] = None
-    raw_response: Optional[Dict[str, Any]] = None
+class ConversationCreate(BaseModel):
+    collection: Optional[str] = Field(default=None, max_length=80)
+    title: Optional[str] = Field(default=None, max_length=120)
 
 
-class DocumentUploadRequest(BaseModel):
-    company_id: uuid.UUID
-    title: str
-    document_category: str = "Policy"
-    summary: Optional[str] = None
+class ConversationUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    collection: Optional[str] = Field(default=None, max_length=80)
 
 
-class GroundTruthExcerpt(BaseModel):
-    document_title: str
-    file_name: Optional[str] = None
-    excerpt: str
-
-
-class KnowledgeAskRequest(BaseModel):
-    question: str = Field(..., min_length=2)
-    company_id: Optional[uuid.UUID] = None
+class CitationOut(BaseModel):
+    marker: Optional[str] = None
+    quote: str
     document_id: Optional[uuid.UUID] = None
+    document_title: Optional[str] = None
+    page: Optional[int] = None
+    section: Optional[str] = None
+    verified: bool = False
+    exact: bool = False
 
 
-class KnowledgeAskResponse(BaseModel):
-    answer: str
-    company_context: Optional[str] = None
-    sources: List[str] = []
-    ground_truth_excerpts: List[GroundTruthExcerpt] = []
+class SourceOut(BaseModel):
+    marker: str
+    document_id: uuid.UUID
+    document_title: str
+    page: Optional[int] = None
+    section: Optional[str] = None
+    text: str
+    via: List[str] = []
+
+
+class TurnOut(BaseModel):
+    id: uuid.UUID
+    role: str
+    content: str
+    citations: List[CitationOut] = []
+    sources: List[SourceOut] = []
+    found_in_documents: Optional[bool] = None
+    confidence: Optional[int] = None
+    created_at: datetime
+
+
+class ConversationDetail(ConversationOut):
+    turns: List[TurnOut] = []
+
+
+class AskIn(BaseModel):
+    question: str = Field(min_length=2, max_length=2000)
+
+
+class SuggestionsOut(BaseModel):
+    questions: List[str]
+
+
+class SearchHit(BaseModel):
+    document_id: uuid.UUID
+    document_title: str
+    page: Optional[int] = None
+    section: Optional[str] = None
+    snippet: str
+    via: List[str]

@@ -1,0 +1,144 @@
+SOFTWARE-AS-A-SERVICE SUBSCRIPTION AGREEMENT
+
+This Software-as-a-Service Subscription Agreement (the "Agreement") is entered into as of 2 April 2026 (the "Effective Date")
+
+BETWEEN
+
+CLOUDNIMBUS SOFTWARE INC., a corporation organised under the laws of the State of Delaware, United States of America, having its principal place of business at 1209 Orange Street, Wilmington, Delaware 19801, USA (the "Vendor");
+
+AND
+
+SARASWATI TEXTILES PRIVATE LIMITED, a company incorporated under the Companies Act, 2013, bearing CIN U17120GJ2012PTC123456 and having its registered office at 56, Ring Road, Near Sahara Darwaja, Surat 395002, Gujarat, India, acting through its Director Mr. Kiran Bhanubhai Shah (the "Customer").
+
+RECITALS
+
+A. The Vendor provides a cloud-based inventory, order management and accounting integration platform known as "NimbusERP" (the "Service").
+
+B. The Customer wishes to subscribe to the Service for its textile trading and manufacturing business, and the Vendor agrees to provide it, on the terms of this Agreement.
+
+1. DEFINITIONS
+
+1.1 "Authorised Users" means the employees of the Customer for whom subscriptions have been purchased, being not more than twenty-five (25) in number.
+
+1.2 "Customer Data" means all data, records and information entered into or generated through the Service by or for the Customer, including data relating to the Customer's suppliers, buyers, employees and transactions.
+
+1.3 "Fees" means the subscription fees set out in Order Form 1 (Annexure A).
+
+1.4 "Initial Term" means the period of twelve (12) months commencing on the Effective Date.
+
+1.5 "Renewal Term" has the meaning given in Clause 4.1.
+
+2. SUBSCRIPTION AND LICENCE
+
+2.1 Subject to payment of the Fees, the Vendor grants the Customer a non-exclusive, non-transferable, non-sublicensable right to access and use the Service during the Term for its internal business purposes through the Authorised Users.
+
+2.2 The Customer shall not (a) permit any person other than an Authorised User to access the Service; (b) reverse engineer or copy the Service; (c) use the Service to store unlawful content; or (d) use the Service in violation of the Vendor's Acceptable Use Policy, which the Vendor may amend at any time by posting it on its website.
+
+3. FEES AND PAYMENT
+
+3.1 The Customer shall pay annual Fees of USD 18,000 (United States Dollars Eighteen Thousand only), equivalent at the Effective Date to approximately Rs 15,12,000, payable annually in advance within seven (7) days of the invoice date. Fees are payable in United States Dollars by wire transfer to the Vendor's account in the United States, and exchange-rate fluctuations shall be borne by the Customer.
+
+3.2 The Fees are exclusive of all taxes. The Customer shall bear all applicable taxes, duties, withholding taxes and levies, including Goods and Services Tax on import of services under the Integrated Goods and Services Tax Act, 2017 on a reverse-charge basis, and shall gross up any payment so that the Vendor receives the full amount of the Fees free from any deduction.
+
+3.3 Fees are non-cancellable and non-refundable. Any overdue amount shall bear interest at one and a half per cent (1.5%) per month, i.e. eighteen per cent (18%) per annum, and the Vendor may suspend the Service without notice for any overdue amount.
+
+4. TERM AND AUTOMATIC RENEWAL
+
+4.1 This Agreement shall commence on the Effective Date and continue for the Initial Term. Thereafter, this Agreement shall renew automatically for successive renewal terms of twenty-four (24) months each (each a "Renewal Term"), unless the Customer gives the Vendor written notice of non-renewal by registered post addressed to the Vendor's principal place of business not less than one hundred and twenty (120) days prior to the expiry of the then-current term.
+
+4.2 The Vendor shall not be obliged to remind the Customer of the renewal date or of the notice requirement in Clause 4.1.
+
+5. PRICE REVISION
+
+5.1 The Vendor may revise the Fees at any time by notice to the Customer. On each renewal under Clause 4.1, the Fees for the Renewal Term shall stand increased by twenty per cent (20%) over the Fees applicable in the immediately preceding term, and the increased Fees for the whole Renewal Term shall be payable in advance.
+
+5.2 The Vendor may in addition increase the Fees at any time within a term where it adds new modules, and the Customer shall be deemed to have accepted such increase unless it discontinues use of the Service, in which case no refund shall be due.
+
+6. CUSTOMER RESPONSIBILITIES
+
+6.1 The Customer is solely responsible for the accuracy and legality of Customer Data and for obtaining all consents required for its processing, including under the Digital Personal Data Protection Act, 2023, and for the confidentiality of user credentials.
+
+6.2 The Customer shall maintain its own backups of Customer Data. The Vendor does not guarantee the integrity or recoverability of Customer Data.
+
+7. DATA OWNERSHIP, USE AND DELETION
+
+7.1 As between the Parties, the Customer owns the Customer Data, subject to the licence granted in Clause 7.2.
+
+7.2 The Customer grants the Vendor a perpetual, worldwide, irrevocable, royalty-free licence to use, copy, analyse and create derivative works from Customer Data, in aggregated or de-identified form, for any purpose, including product development, benchmarking and the training of machine learning models, and to share it with its affiliates and partners.
+
+7.3 Upon expiry or termination of this Agreement for any reason, the Customer may export its Customer Data in the Vendor's standard format during a period of seven (7) days after the date of expiry or termination. Thereafter the Vendor shall delete all Customer Data and shall have no liability for its loss. Assistance with data migration shall be charged at the Vendor's then-current professional services rates.
+
+7.4 The Vendor may store and process Customer Data in any country in which it or its sub-processors operate.
+
+8. SERVICE LEVELS AND SUPPORT
+
+8.1 The Vendor shall use commercially reasonable efforts to make the Service available ninety-five per cent (95%) of the time in any calendar month, excluding scheduled maintenance, emergency maintenance and any downtime caused by third-party providers.
+
+8.2 The sole and exclusive remedy of the Customer for any failure to meet Clause 8.1 shall be a service credit of two per cent (2%) of the monthly Fees for each full hour of unavailability, subject to a maximum credit of ten per cent (10%) of the monthly Fees, claimed within five (5) days of the end of the month in which the downtime occurred.
+
+8.3 Support is provided by email between 9:00 a.m. and 5:00 p.m. Pacific Time on United States business days.
+
+9. WARRANTIES AND DISCLAIMER
+
+9.1 Each Party represents that it has the authority to enter into this Agreement.
+
+9.2 EXCEPT AS EXPRESSLY STATED IN CLAUSE 9.1, THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE". THE VENDOR DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT AND UNINTERRUPTED OR ERROR-FREE OPERATION.
+
+10. LIMITATION OF LIABILITY
+
+10.1 The aggregate liability of the Vendor arising out of or in connection with this Agreement, whether in contract, tort (including negligence) or otherwise, shall not exceed the Fees paid by the Customer for the one (1) month period immediately preceding the event giving rise to the claim. The Vendor shall in no event be liable for any indirect, incidental, special, consequential or punitive damages, or for loss of profits, revenue, data or goodwill, even if advised of their possibility.
+
+10.2 The liability of the Customer under this Agreement, including under Clause 11.2, shall not be subject to any limit or exclusion, and the exclusions in Clause 10.1 shall not apply to the Customer.
+
+10.3 Any claim by the Customer must be notified to the Vendor in writing within thirty (30) days of the date on which the cause of action arose, failing which it shall be barred.
+
+11. INDEMNIFICATION
+
+11.1 The Vendor shall have no obligation to indemnify the Customer except as required by law.
+
+11.2 The Customer shall defend, indemnify and hold harmless the Vendor, its affiliates, officers and employees from and against all claims, losses, damages, liabilities, costs and expenses (including attorneys' fees) arising out of or relating to the Customer Data, the Customer's use of the Service, or any breach of this Agreement by the Customer.
+
+12. TERMINATION
+
+12.1 The Vendor may terminate this Agreement or suspend the Service at any time, for any reason or no reason, by giving the Customer fifteen (15) days' written notice, and without refund of any pre-paid Fees if termination is for any breach by the Customer.
+
+12.2 The Customer may terminate this Agreement only for the Vendor's uncured material breach, by giving thirty (30) days' written notice specifying the breach. No refund of pre-paid Fees shall be made on any termination by the Customer.
+
+12.3 If the Customer terminates this Agreement during the Initial Term or a Renewal Term for any reason other than under Clause 12.2, the Customer shall pay all Fees for the remainder of the then-current term, which shall become immediately due.
+
+13. GOVERNING LAW AND ARBITRATION
+
+13.1 This Agreement shall be governed by and construed in accordance with the laws of the State of Delaware, USA, without regard to conflict of law principles, and the United Nations Convention on Contracts for the International Sale of Goods shall not apply.
+
+13.2 Any dispute arising out of or relating to this Agreement shall be finally settled by binding arbitration administered by the American Arbitration Association in accordance with its Commercial Arbitration Rules. The seat and venue of the arbitration shall be Wilmington, Delaware. The arbitration shall be conducted in English before a single arbitrator.
+
+13.3 Each Party shall bear its own costs, provided that the Customer shall bear the fees of the arbitrator and the administrative fees of the American Arbitration Association if the Vendor prevails on any claim. Nothing in this Clause shall prevent the Vendor from seeking injunctive relief or recovering unpaid Fees in any court.
+
+14. GENERAL
+
+14.1 The Vendor may assign this Agreement without the consent of the Customer. The Customer may not assign this Agreement without the Vendor's prior written consent.
+
+14.2 The Vendor may use the Customer's name and logo in its marketing materials without further consent.
+
+14.3 This Agreement, together with the Order Form and the policies posted on the Vendor's website, constitutes the entire agreement of the Parties. The Vendor may amend its policies and these terms at any time by posting the revised terms on its website.
+
+14.4 Notices to the Vendor shall be sent by registered post to its principal place of business. Notices to the Customer may be given by email.
+
+14.5 Neither Party shall be liable for any failure caused by force majeure, provided that the payment obligations of the Customer shall not be excused by force majeure.
+
+ANNEXURE A - ORDER FORM 1
+
+Service: NimbusERP Business Plan (Inventory, Orders, GST Invoicing, Tally Connector)
+Authorised Users: 25
+Initial Term: 2 April 2026 to 1 April 2027
+Annual Fees: USD 18,000
+Support Tier: Standard (email only)
+Storage: 500 GB
+
+Signed for CLOUDNIMBUS SOFTWARE INC.
+Name: Ms. Rebecca Holloway, Vice President, Contracts
+Signature: ____________________
+
+Signed for SARASWATI TEXTILES PRIVATE LIMITED
+Name: Mr. Kiran Bhanubhai Shah, Director
+Signature: ____________________

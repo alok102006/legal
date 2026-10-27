@@ -1,0 +1,46 @@
+{
+  "documents": [
+    {
+      "key": "handbook",
+      "title": "Employee Handbook",
+      "collection": "HR",
+      "text": "EMPLOYEE HANDBOOK - KULKARNI TEXTILES PVT LTD\n\n1. Working hours\nThe standard working week is 48 hours across six days. Overtime is paid at twice the normal rate.\n\n2. Notice period\nManagers must give 60 days written notice before resigning. All other staff must give 30 days notice.\nDuring probation of six months, either side may end employment with 7 days notice.\n\n3. Leave\nEmployees are entitled to 24 days of paid leave per calendar year. Unused leave up to 12 days may be carried forward.\n\n4. Confidentiality\nEmployees must not disclose pricing, customer lists or dyeing formulas during or after employment.\n\n5. Grievances\nComplaints go to the HR manager in writing; a reply is due within 15 working days.\n"
+    },
+    {
+      "key": "leave_hi",
+      "title": "छुट्टी नीति",
+      "collection": "HR",
+      "text": "छुट्टी नीति - कुलकर्णी टेक्सटाइल्स\n\n1. सवेतन अवकाश\nसभी कर्मचारियों को प्रति कैलेंडर वर्ष 24 दिन का सवेतन अवकाश मिलेगा। अधिकतम 12 दिन की अप्रयुक्त छुट्टी अगले वर्ष में ले जाई जा सकती है।\n\n2. बीमारी अवकाश\nप्रति वर्ष 7 दिन का बीमारी अवकाश मिलेगा। तीन दिन से अधिक की बीमारी के लिए डॉक्टर का प्रमाणपत्र आवश्यक है।\n\n3. मातृत्व अवकाश\nमातृत्व अवकाश 26 सप्ताह का होगा, जैसा कि कानून में निर्धारित है।\n"
+    },
+    {
+      "key": "fire",
+      "title": "Fire Safety Certificate",
+      "collection": "Licences",
+      "text": "FIRE SAFETY CERTIFICATE\nCertificate No. FS/SRT/2024/1187\nIssued to Kulkarni Textiles Pvt Ltd, Plot 14, Sachin GIDC, Surat.\nThis certificate is valid until 31 December 2026 and must be renewed before that date.\nThe premises were inspected on 12 January 2026 and found to comply with the Gujarat Fire Prevention and Life Safety Measures Act.\nRenewal applications must be filed at least 45 days before expiry with the Surat Municipal Corporation fire office.\n"
+    },
+    {
+      "key": "prices",
+      "title": "Supplier price list 2026",
+      "collection": "Finance",
+      "text": "SUPPLIER PRICE LIST - APRIL 2026\n\nItem | Supplier | Rate | Payment terms\nCotton yarn 40s | Shree Ganesh Spinners | Rs 285 per kg | 30 days\nPolyester yarn 150D | Surat Filaments Ltd | Rs 112 per kg | 45 days\nReactive dyes (black) | Colourtex Industries | Rs 640 per kg | advance\nDiesel for boilers | HPCL dealer Sachin | Rs 92 per litre | cash\n\nNote: rates exclude GST at 5% on yarn and 18% on dyes.\n"
+    }
+  ],
+  "questions": [
+    {"q": "What notice period do managers have?", "doc": "handbook", "expect": "60 days"},
+    {"q": "How much notice during probation?", "doc": "handbook", "expect": "7 days"},
+    {"q": "overtime rate", "doc": "handbook", "expect": "twice the normal rate"},
+    {"q": "How many days of leave can be carried forward?", "doc": "handbook", "expect": "12 days"},
+    {"q": "Can staff share dyeing formulas after they leave?", "doc": "handbook", "expect": "dyeing formulas"},
+    {"q": "How long does HR have to answer a complaint?", "doc": "handbook", "expect": "15 working days"},
+    {"q": "कितने दिन का बीमारी अवकाश मिलता है?", "doc": "leave_hi", "expect": "7 दिन"},
+    {"q": "doctor certificate kab chahiye sick leave ke liye?", "doc": "leave_hi", "expect": "डॉक्टर का प्रमाणपत्र"},
+    {"q": "maternity leave kitne hafte ka hai", "doc": "leave_hi", "expect": "26 सप्ताह"},
+    {"q": "When does the fire certificate expire?", "doc": "fire", "expect": "31 December 2026"},
+    {"q": "fire NOC renewal deadline before expiry", "doc": "fire", "expect": "45 days"},
+    {"q": "certificate number of the fire safety approval", "doc": "fire", "expect": "FS/SRT/2024/1187"},
+    {"q": "What is the rate for polyester yarn?", "doc": "prices", "expect": "Rs 112 per kg"},
+    {"q": "payment terms for Colourtex", "doc": "prices", "expect": "advance"},
+    {"q": "GST on dyes", "doc": "prices", "expect": "18%"},
+    {"q": "diesel price per litre", "doc": "prices", "expect": "Rs 92"}
+  ]
+}

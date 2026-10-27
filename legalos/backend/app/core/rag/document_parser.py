@@ -1,22 +1,14 @@
 import io
 import csv
-import fitz  # PyMuPDF
 import docx
 from app.shared.exceptions import BadRequestException
+from app.core.rag.parsing import parse_pdf_pages
 
 
 def parse_pdf(file_bytes: bytes) -> str:
-    """Extracts text from PDF bytes using PyMuPDF (fitz)."""
-    text_content = []
-    try:
-        with fitz.open(stream=file_bytes, filetype="pdf") as doc:
-            for page_num, page in enumerate(doc, 1):
-                page_text = page.get_text().strip()
-                if page_text:
-                    text_content.append(f"--- Page {page_num} ---\n{page_text}")
-        return "\n\n".join(text_content)
-    except Exception as e:
-        raise BadRequestException(f"Failed to parse PDF document: {str(e)}")
+    """Extracts text from PDF bytes (pdfplumber), with page markers."""
+    parsed = parse_pdf_pages(file_bytes)
+    return "\n\n".join(f"--- Page {p.number} ---\n{p.text}" for p in parsed.pages if p.text)
 
 
 def parse_docx(file_bytes: bytes) -> str:

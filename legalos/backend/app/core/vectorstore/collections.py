@@ -1,4 +1,5 @@
 from qdrant_client.http import models as qmodels
+from app.config import settings
 from app.core.vectorstore.qdrant_client import get_qdrant_client
 
 def init_collections() -> None:
@@ -20,6 +21,11 @@ def init_collections() -> None:
             "distance": qmodels.Distance.COSINE
         },
         "knowledge_base": {
+            "size": 384,
+            "distance": qmodels.Distance.COSINE
+        },
+        # Documents workspace v2 (page-aware chunks, organisation-scoped)
+        settings.documents_collection: {
             "size": 384,
             "distance": qmodels.Distance.COSINE
         }

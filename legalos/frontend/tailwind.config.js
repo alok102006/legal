@@ -1,3 +1,9 @@
+/** CSS-variable colours that still support opacity modifiers such as bg-critical/40 (via color-mix). */
+const v = (name) => ({ opacityValue }) =>
+  opacityValue === undefined || opacityValue === '1'
+    ? `var(${name})`
+    : `color-mix(in srgb, var(${name}) calc(${opacityValue} * 100%), transparent)`;
+
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: 'class',
@@ -8,52 +14,41 @@ export default {
   theme: {
     extend: {
       colors: {
-        obsidian: {
-          950: '#090D16', // Base Canvas Void
-          900: '#0D1322', // Surface Subtle (Container Canvas)
-          850: '#111827', // Surface Container
-          800: '#141C30', // Surface Elevated (Cards / Drawers)
-          750: '#191F2F', // Glass Surface
-          700: '#242A3A', // Elevated Hover / Active Card
-          600: '#2F3445', // Highest Container
+        // ---- new design system (CSS-variable driven; light/dark handled in index.css)
+        app: v('--bg'),
+        surface: { DEFAULT: v('--surface'), 2: v('--surface-2') },
+        line: { DEFAULT: v('--border'), strong: v('--border-strong') },
+        ink: { DEFAULT: v('--text'), 2: v('--text-2'), 3: v('--text-3') },
+        primary: {
+          DEFAULT: v('--primary'),
+          hover: v('--primary-hover'),
+          soft: v('--primary-soft'),
+          ink: v('--primary-ink'),
+          on: v('--on-primary'),
         },
-        brand: {
-          50: '#f0f4ff',
-          100: '#dbe5ff',
-          200: '#bfd2ff',
-          300: '#93b4ff',
-          400: '#60a5fa',
-          500: '#3b82f6', // Sapphire Intelligence Primary
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-          dark: '#090D16'
-        },
-        risk: {
-          low: '#10b981',     // Emerald Compliant
-          medium: '#f59e0b',  // Amber Deadline Looming
-          high: '#ef4444'     // Ruby Critical Risk
-        }
+        good: { DEFAULT: v('--good'), ink: v('--good-ink'), soft: v('--good-soft') },
+        warn: { DEFAULT: v('--warn'), ink: v('--warn-ink'), soft: v('--warn-soft') },
+        serious: { DEFAULT: v('--serious'), ink: v('--serious-ink'), soft: v('--serious-soft') },
+        critical: { DEFAULT: v('--critical'), ink: v('--critical-ink'), soft: v('--critical-soft') },
+        peach: { DEFAULT: v('--peach'), ink: v('--peach-ink'), line: v('--peach-line') },
+        lavender: { DEFAULT: v('--lavender'), ink: v('--lavender-ink') },
+        teal: { DEFAULT: v('--teal'), soft: v('--teal-soft') },
+
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans: ['Figtree', 'Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        serif: ['Newsreader', 'Georgia', 'Cambria', 'serif'],          // readable body serif for contract and notice text
+        display: ['Instrument Serif', 'Newsreader', 'Georgia', 'serif'], // hero lines and section titles
+        mono: ['Geist Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
+      borderRadius: { xl: '14px', '2xl': '18px', '3xl': '24px' },
       boxShadow: {
-        'glow-blue': '0 0 20px -3px rgba(59, 130, 246, 0.25)',
-        'glow-emerald': '0 0 20px -3px rgba(16, 185, 129, 0.25)',
-        'glow-amber': '0 0 20px -3px rgba(245, 158, 11, 0.25)',
-        'glow-ruby': '0 0 20px -3px rgba(239, 68, 68, 0.25)',
-        'glass-card': '0 8px 32px 0 rgba(0, 0, 0, 0.45)',
+        card: 'var(--shadow)',
+        raised: 'var(--shadow-raised)',
+        float: 'var(--shadow-float)',
+        inset: 'var(--shadow-inset)',
       },
-      borderColor: {
-        'hairline': 'rgba(255, 255, 255, 0.08)',
-        'subtle': 'rgba(255, 255, 255, 0.14)',
-        'active': 'rgba(59, 130, 246, 0.50)',
-      }
     },
   },
   plugins: [],
 }
-

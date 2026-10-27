@@ -1,153 +1,122 @@
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, Depends, status, HTTPException, UploadFile, File, Form
+
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Query, UploadFile
+from fastapi.responses import FileResponse, StreamingResponse
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_db_session, get_current_user
-from app.shared.auth.auth_service import UserStub
-from app.workspaces.knowledge_hub import service
-from app.workspaces.knowledge_hub.schemas import (
-    CompanyRegisterRequest,
-    RegisteredCompanyResponse,
-    CompanyProfilePreview,
-    CompanyDocumentResponse,
-    DocumentUploadRequest,
-    KnowledgeAskRequest,
-    KnowledgeAskResponse,
-    GroundTruthExcerpt
-)
+from app.dependencies import RequestContext, get_ctx, require_writer
+from app.shared.db.session import get_db_session
+from app.workspaces.knowledge_hub import schemas, service
 
 router = APIRouter()
 
 
-@router.post("/companies/preview", response_model=CompanyProfilePreview)
-async def preview_company(
-    req: CompanyRegisterRequest
+# ---------------------------------------------------------------- documents and collections
+
+@router.get("/documents", response_model=List[schemas.DocListItem])
+async def list_documents(collection: Optional[str] = None, db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(get_ctx)):
+    return await service.list_documents(db, ctx, collection)
+
+
+@router.get("/collections", response_model=List[schemas.CollectionOut])
+async def list_collections(db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(get_ctx)):
+    return await service.list_collections(db, ctx)
+
+
+@router.post("/documents/upload", response_model=schemas.DocListItem, status_code=202)
+async def upload_document(
+    background_tasks: BackgroundTasks, file: UploadFile = File(...), category: Optional[str] = Form(None), title: Optional[str] = Form(None),
+    db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(require_writer),
 ):
-    """
-    Previews live taxpayer profiling metadata from Sandbox API without storing in database.
-    """
-    profile = await service.preview_company_profile(req.gstin)
-    return CompanyProfilePreview(
-        gstin=profile["gstin"],
-        legal_name=profile["legal_name"],
-        trade_name=profile.get("trade_name"),
-        entity_type=profile.get("entity_type"),
-        registration_date=profile.get("registration_date"),
-        taxpayer_type=profile.get("taxpayer_type"),
-        status=profile.get("status", "Active"),
-        state_jurisdiction=profile.get("state_jurisdiction"),
-        center_jurisdiction=profile.get("center_jurisdiction"),
-        principal_address=profile.get("principal_address"),
-        nature_of_business=profile.get("nature_of_business"),
-        raw_response=profile.get("raw_response")
-    )
+    kd = await service.create_upload(db, ctx, await file.read(), file.filename or "document.txt", category, title)
+    background_tasks.add_task(service.run_ingest, kd.id)
+    return service.to_list_item(kd)
 
 
-@router.post("/companies", response_model=RegisteredCompanyResponse, status_code=status.HTTP_201_CREATED)
-async def register_company(
-    req: CompanyRegisterRequest,
-    session: AsyncSession = Depends(get_db_session),
-    current_user: UserStub = Depends(get_current_user)
-):
-    """
-    Registers a company using 15-character GSTIN, profiles via Sandbox API, and persists in PostgreSQL.
-    """
-    company = await service.register_company_by_gstin(session, req.gstin, user_id=current_user.id)
-    return company
+@router.get("/documents/{doc_id}", response_model=schemas.DocDetail)
+async def get_document(doc_id: uuid.UUID, db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(get_ctx)):
+    return await service.get_detail(db, ctx, doc_id)
 
 
-@router.get("/companies", response_model=List[RegisteredCompanyResponse])
-async def list_companies(
-    session: AsyncSession = Depends(get_db_session)
-):
-    """
-    Lists all companies registered in Knowledge Hub.
-    """
-    return await service.list_registered_companies(session)
+class DocUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, max_length=200)
+    category: Optional[str] = Field(default=None, max_length=80)
 
 
-@router.get("/companies/{company_id}", response_model=RegisteredCompanyResponse)
-async def get_company(
-    company_id: uuid.UUID,
-    session: AsyncSession = Depends(get_db_session)
-):
-    """
-    Gets detailed corporate profile for a registered company.
-    """
-    return await service.get_registered_company(session, company_id)
+@router.patch("/documents/{doc_id}", response_model=schemas.DocListItem)
+async def update_document(doc_id: uuid.UUID, body: DocUpdate, db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(require_writer)):
+    return service.to_list_item(await service.update_document(db, ctx, doc_id, body.title, body.category))
 
 
-@router.delete("/companies/{company_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_company(
-    company_id: uuid.UUID,
-    session: AsyncSession = Depends(get_db_session)
-):
-    """
-    Unregisters / deletes a company from Knowledge Hub.
-    """
-    await service.delete_registered_company(session, company_id)
-    return None
+@router.post("/documents/{doc_id}/retry", response_model=schemas.DocListItem, status_code=202)
+async def retry_document(doc_id: uuid.UUID, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(require_writer)):
+    kd = await service.prepare_retry(db, ctx, doc_id)
+    background_tasks.add_task(service.run_ingest, kd.id)
+    return service.to_list_item(kd)
 
 
-@router.post("/documents/upload", response_model=CompanyDocumentResponse, status_code=status.HTTP_201_CREATED)
-async def upload_company_document_file(
-    company_id: uuid.UUID = Form(...),
-    title: Optional[str] = Form(None),
-    document_category: str = Form("Policy"),
-    file: UploadFile = File(...),
-    session: AsyncSession = Depends(get_db_session)
-):
-    """
-    Uploads a document file (.pdf, .docx, .csv, .xlsx, .txt, .md), parses text content,
-    indexes into Qdrant vector database for RAG Ground Truth, and saves to PostgreSQL.
-    """
-    file_bytes = await file.read()
-    filename = file.filename or "uploaded_doc.pdf"
-    
-    doc = await service.upload_and_process_company_document(
-        session=session,
-        company_id=company_id,
-        filename=filename,
-        file_bytes=file_bytes,
-        title=title,
-        document_category=document_category
-    )
-    return doc
+@router.get("/documents/{doc_id}/file")
+async def download_file(doc_id: uuid.UUID, db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(get_ctx)):
+    path, name = await service.get_file(db, ctx, doc_id)
+    return FileResponse(path, filename=name)
 
 
-@router.delete("/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_document(
-    document_id: uuid.UUID,
-    session: AsyncSession = Depends(get_db_session)
-):
-    """
-    Deletes a company document completely from PostgreSQL, disk storage, and Qdrant.
-    """
-    await service.delete_company_document_by_id(session, document_id)
-    return None
+@router.delete("/documents/{doc_id}")
+async def delete_document(doc_id: uuid.UUID, db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(require_writer)):
+    await service.delete_document(db, ctx, doc_id)
+    return {"status": "deleted"}
 
 
+@router.get("/search", response_model=List[schemas.SearchHit])
+async def search(q: str = Query(..., min_length=2, max_length=300), collection: Optional[str] = None,
+                 db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(get_ctx)):
+    return await service.search(db, ctx, q, collection)
 
-@router.post("/ask", response_model=KnowledgeAskResponse)
-async def ask_knowledge(
-    req: KnowledgeAskRequest,
-    session: AsyncSession = Depends(get_db_session)
-):
-    """
-    AI Assistant Q&A using uploaded PDF, Word, CSV, Excel files as STRICT GROUND TRUTH.
-    """
-    res = await service.ask_company_knowledge(
-        session=session,
-        question=req.question,
-        company_id=req.company_id,
-        document_id=req.document_id
-    )
-    return KnowledgeAskResponse(
-        answer=res["answer"],
-        company_context=res.get("company_context"),
-        sources=res.get("sources", []),
-        ground_truth_excerpts=[
-            GroundTruthExcerpt(**item) for item in res.get("ground_truth_excerpts", [])
-        ]
-    )
+
+@router.get("/suggestions", response_model=schemas.SuggestionsOut)
+async def get_suggestions(collection: Optional[str] = None, db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(get_ctx)):
+    return {"questions": await service.suggestions(db, ctx, collection)}
+
+
+# ---------------------------------------------------------------- conversations
+
+@router.get("/conversations", response_model=List[schemas.ConversationOut])
+async def list_conversations(db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(get_ctx)):
+    return await service.list_conversations(db, ctx)
+
+
+@router.post("/conversations", response_model=schemas.ConversationOut, status_code=201)
+async def create_conversation(body: schemas.ConversationCreate, db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(require_writer)):
+    return await service.create_conversation(db, ctx, body.collection, body.title)
+
+
+@router.get("/conversations/{conv_id}", response_model=schemas.ConversationDetail)
+async def get_conversation(conv_id: uuid.UUID, db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(get_ctx)):
+    return await service.get_conversation(db, ctx, conv_id)
+
+
+@router.patch("/conversations/{conv_id}", response_model=schemas.ConversationOut)
+async def update_conversation(conv_id: uuid.UUID, body: schemas.ConversationUpdate, db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(require_writer)):
+    data = body.model_dump(exclude_unset=True)
+    return await service.update_conversation(db, ctx, conv_id, data.get("title"), data.get("collection"), "collection" in data)
+
+
+@router.delete("/conversations/{conv_id}")
+async def delete_conversation(conv_id: uuid.UUID, db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(require_writer)):
+    await service.delete_conversation(db, ctx, conv_id)
+    return {"status": "deleted"}
+
+
+@router.post("/conversations/{conv_id}/ask", response_model=schemas.TurnOut)
+async def ask(conv_id: uuid.UUID, body: schemas.AskIn, db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(require_writer)):
+    """Answers only from the company's own documents, with verified quotes and page numbers."""
+    return await service.ask(db, ctx, conv_id, body.question)
+
+
+@router.post("/conversations/{conv_id}/ask/stream")
+async def ask_stream(conv_id: uuid.UUID, body: schemas.AskIn, ctx: RequestContext = Depends(require_writer)):
+    """Same as /ask but as server-sent events: `stage`, `delta`, then `done` (the stored turn) or `error`."""
+    return StreamingResponse(service.ask_stream(ctx, conv_id, body.question), media_type="text/event-stream",
+                            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

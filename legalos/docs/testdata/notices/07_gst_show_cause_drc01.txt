@@ -1,0 +1,75 @@
+FORM GST DRC-01
+[See rule 142(1)]
+
+Summary of the Show Cause Notice
+
+Reference No.: ZD2410260098765
+Date of Issue: 14 October 2026
+
+GSTIN / Temporary ID: 24ABCDE1234F1Z5
+Name of the Taxpayer: M/s SHREE AMBICA ENGINEERING WORKS
+Address: Plot No. 47, Phase II, GIDC Industrial Estate, Odhav, Ahmedabad 382415, Gujarat
+
+To,
+The Proprietor / Authorised Signatory
+M/s Shree Ambica Engineering Works
+Plot No. 47, Phase II, GIDC Industrial Estate, Odhav, Ahmedabad 382415
+
+Issued by: The Superintendent, Central GST, Range-III, Division Odhav, Commissionerate Ahmedabad South (the "Proper Officer")
+
+Subject: Show Cause Notice under Section 73 of the Central Goods and Services Tax Act, 2017 read with Section 20 of the Integrated Goods and Services Tax Act, 2017 and the corresponding provisions of the Gujarat Goods and Services Tax Act, 2017 for the Financial Year 2024-25.
+
+1. Whereas, on scrutiny of the returns filed by you for the Financial Year 2024-25 (1 April 2024 to 31 March 2025) and on a reconciliation of the data available on the common portal, it has been noticed that the Input Tax Credit ("ITC") claimed by you in Form GSTR-3B exceeds the ITC available to you as reflected in your auto-populated statement in Form GSTR-2A, for the reasons and in the manner summarised hereinunder.
+
+2. Whereas, an intimation of the discrepancy in Form GST ASMT-10 was issued to you on 22 July 2026, to which no reply, or no satisfactory reply, has been received within the time allowed.
+
+3. Whereas, the details of the mismatch are as follows (amounts in Rs):
+
+Particulars                          IGST        CGST        SGST        Total
+ITC claimed in GSTR-3B (Table 4A)    11,48,000   9,26,750    9,26,750    30,01,500
+ITC reflected in GSTR-2A             9,38,000    6,89,500    6,89,500    23,17,000
+Excess ITC claimed (mismatch)        2,10,000    2,37,250    2,37,250    6,84,500
+
+Of the said mismatch, ITC of Rs 4,41,200 pertains to invoices of the suppliers listed in Annexure A (suppliers who have not filed Form GSTR-1 for the relevant tax periods, or have not paid the tax), and ITC of Rs 2,43,300 pertains to invoices that are not reflected in GSTR-2A at all.
+
+4. Whereas, the ITC availed in excess of the credit reflected in your statement is, prima facie, ineligible under Section 16(2)(aa) and Section 41 of the CGST Act, 2017, as the supplier has not furnished the details of the invoices in Form GSTR-1 or has not paid the tax charged on the supply, and the same appears to have been availed by reason of reasons other than fraud, wilful misstatement or suppression of facts to evade tax.
+
+5. Whereas, therefore, you are hereby called upon to show cause, in writing, as to why:
+
+(a) the tax of Rs 6,84,500/- (Rupees Six Lakh Eighty-Four Thousand Five Hundred only) (IGST Rs 2,10,000, CGST Rs 2,37,250 and SGST Rs 2,37,250), being the ITC wrongly availed and utilised, should not be demanded and recovered from you under Section 73(1) of the CGST Act, 2017;
+(b) interest at the applicable rate under Section 50 of the CGST Act, 2017 should not be demanded and recovered from you; and
+(c) penalty under Section 73(9) of the CGST Act, 2017 should not be imposed upon you.
+
+6. Details of the demand (amounts in Rs):
+
+Act            Tax        Interest (calculated up to 14.10.2026)    Penalty (s.73(9))    Total
+IGST           2,10,000   36,300                                    21,000               2,67,300
+CGST           2,37,250   41,000                                    23,725               3,01,975
+SGST           2,37,250   41,000                                    23,725               3,01,975
+Total          6,84,500   1,18,300                                  68,450               8,71,250
+
+The interest shall continue to accrue till the date of payment. The penalty has been proposed at ten per cent of the tax due or Rs 10,000, whichever is higher, in terms of Section 73(9).
+
+7. Option to pay and consequences: In terms of Section 73(8) of the CGST Act, 2017, if you pay the tax of Rs 6,84,500/- along with interest under Section 50 within thirty (30) days of the issue of this notice, no penalty shall be payable and all proceedings in respect of the said notice shall be deemed to be concluded. Payment may be made through Form GST DRC-03 on the common portal, quoting this Reference Number.
+
+8. Reply: You are required to file your reply to this notice, along with all supporting documents, in Form GST DRC-06 on the common portal within thirty (30) days from the date of this notice, that is, on or before 13 November 2026. If you fail to reply by the said date, the Proper Officer shall proceed to decide the matter ex parte on the basis of the material available on record, and pass an order under Section 73(9) without any further reference to you.
+
+9. Personal hearing: You are hereby given an opportunity of being heard in person or through an authorised representative on 24 November 2026 at 11:30 a.m. before the Proper Officer at the Office of the Superintendent, Central GST, Range-III, Division Odhav, 2nd Floor, Central Excise Bhavan, Ashram Road, Ahmedabad 380009.
+10. Documents to be submitted with the reply: (i) supplier ledgers for FY 2024-25; (ii) tax invoices, e-way bills and bank payment proof; (iii) reconciliation of GSTR-3B, GSTR-2A and GSTR-2B for FY 2024-25; (iv) evidence of receipt of goods or services; (v) correspondence with suppliers on non-filing or non-payment.
+
+11. This notice is issued without prejudice to any other action under the CGST Act, 2017 and has been uploaded on the common portal under "View Additional Notices and Orders", where it is deemed served on the date of issue.
+
+(Digitally signed)
+Name: Shri Nitin Ramesh Vaghela
+Designation: Superintendent, Central GST
+Office: Range-III, Division Odhav, Commissionerate Ahmedabad South
+DIN: 20261058AB0000123456
+
+ANNEXURE A - SUPPLIERS WITH MISMATCHED INVOICES (SUMMARY)
+
+Sr. | Supplier GSTIN        | Supplier Name      | Invoice Period      | ITC (Rs)
+1   | 24AAAAA0000A1Z5       | Bharat Steel Traders           | Apr-Jun 2024        | 1,62,400
+2   | 24BBBBB1111B1Z5       | Kalupur Bearings & Tools       | Aug-Dec 2024        | 1,48,300
+3   | 27CCCCC2222C1Z5       | Raigad Forgings Pvt Ltd        | Jan-Mar 2025        | 1,30,500
+4   | Various (14 suppliers)| Invoices not in GSTR-2A        | Apr 2024-Mar 2025   | 2,43,300
+Total                                                                           | 6,84,500

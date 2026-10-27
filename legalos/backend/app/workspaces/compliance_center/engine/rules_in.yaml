@@ -1,0 +1,418 @@
+# Indian statutory compliance rules (reminder calendar for SMEs).
+#
+# These are STANDARD statutory due dates. Governments extend dates by notification from time to
+# time; the app always shows the standard date and says so. Every rule carries its source.
+# `verify: true` = not yet confirmed against the current official notification; shown to the
+# user as "confirm with your CA". Edit this file (not code) to change a rule; bump `version`.
+#
+# when:      conditions that must ALL hold for the rule to apply
+#   always: true
+#   registration: gst|tds|pf|esi|pt|gst_composition   (organisation says it holds this registration)
+#   not_registration: key                 (rule is OFF when the organisation holds this registration)
+#   state_in: [state codes]               (GST state codes, e.g. "29" = Karnataka)
+#   entity_in / entity_not_in: [entity types]
+#   gst_frequency: monthly|quarterly
+#   turnover_min_band: lt20l|20l-1.5cr|1.5-5cr|5-20cr|20-50cr|gt50cr
+#   turnover_max_band: same scale
+# verify: true  = date/rule not yet confirmed against the official notification (shown as "being verified").
+# late_fee (optional, structured, used for the deterministic "may cost so far" estimate - no AI):
+#   per_day: rupees per day late    cap: maximum rupees    flat: one-off rupees once late
+#   cap_note / fee_note: plain-English caveats shown next to the estimate
+# schedule:
+#   monthly:     due on `day` of (period month + months_after); `overrides` change specific period months
+#   quarterly:   FY quarters (Apr-Jun, Jul-Sep, Oct-Dec, Jan-Mar); due `day` of (quarter-end month + months_after)
+#   fixed_list:  explicit dates; year = FY start year + year_offset
+#   once:        a single fixed date
+
+version: "2026-10-27.1"
+
+# Where each authority's filings are made (shown as a "file it here" link). Keyed by a rule's `authority`.
+portals:
+  GST: { name: "GST portal", url: "https://www.gst.gov.in/" }
+  Income Tax: { name: "Income Tax e-filing portal", url: "https://www.incometax.gov.in/" }
+  EPFO: { name: "EPFO employer portal", url: "https://www.epfindia.gov.in/" }
+  ESIC: { name: "ESIC employer portal", url: "https://www.esic.gov.in/" }
+  MCA: { name: "MCA portal", url: "https://www.mca.gov.in/" }
+
+rules:
+  # ------------------------------------------------------------------ GST
+  - id: gst-gstr1-monthly
+    title: GSTR-1 (outward supplies)
+    category: tax
+    authority: GST
+    form: GSTR-1
+    when: { registration: gst, not_registration: gst_composition, gst_frequency: monthly }
+    schedule: { kind: monthly, day: 11, months_after: 1 }
+    penalty: "Late fee of Rs 50 per day (Rs 20 per day if nil return), subject to a cap. Your buyers also lose input tax credit until you file."
+    late_fee: { per_day: 50, cap: 10000, fee_note: "Rs 20 a day if it is a nil return, and lower caps apply to smaller businesses, so this is the most you could owe." }
+    source: "CGST Act 2017 s.37; CGST Rules r.59"
+    description: "Details of sales made in the month. Buyers claim input tax credit from this."
+
+  - id: gst-gstr1-quarterly
+    title: GSTR-1 (outward supplies, quarterly)
+    category: tax
+    authority: GST
+    form: GSTR-1
+    when: { registration: gst, not_registration: gst_composition, gst_frequency: quarterly }
+    schedule: { kind: quarterly, day: 13, months_after: 1 }
+    penalty: "Late fee of Rs 50 per day (Rs 20 per day if nil return), subject to a cap."
+    late_fee: { per_day: 50, cap: 10000, fee_note: "Rs 20 a day if it is a nil return, and lower caps apply to smaller businesses, so this is the most you could owe." }
+    source: "CGST Act 2017 s.37; QRMP scheme notification"
+    description: "Quarterly sales return under the QRMP scheme."
+
+  - id: gst-gstr3b-monthly
+    title: GSTR-3B (summary return and tax payment)
+    category: tax
+    authority: GST
+    form: GSTR-3B
+    when: { registration: gst, not_registration: gst_composition, gst_frequency: monthly }
+    schedule: { kind: monthly, day: 20, months_after: 1 }
+    penalty: "Late fee of Rs 50 per day (Rs 20 if nil), plus 18% a year interest on unpaid tax."
+    late_fee: { per_day: 50, cap: 10000, fee_note: "Rs 20 a day if it is a nil return, and lower caps apply to smaller businesses, so this is the most you could owe." }
+    source: "CGST Act 2017 s.39, s.47, s.50"
+    description: "Monthly summary of sales and purchases, and payment of GST."
+
+  - id: gst-gstr3b-quarterly
+    title: GSTR-3B (quarterly, QRMP)
+    category: tax
+    authority: GST
+    form: GSTR-3B
+    when: { registration: gst, not_registration: gst_composition, gst_frequency: quarterly }
+    schedule: { kind: quarterly, months_after: 1, day_by_state_group: { x: 22, y: 24 } }
+    penalty: "Late fee of Rs 50 per day (Rs 20 if nil), plus 18% a year interest on unpaid tax."
+    late_fee: { per_day: 50, cap: 10000, fee_note: "Rs 20 a day if it is a nil return, and lower caps apply to smaller businesses, so this is the most you could owe." }
+    source: "CGST Act 2017 s.39; QRMP scheme notification (due 22nd or 24th depending on state)"
+    description: "Quarterly summary return. Due on the 22nd for most southern and western states, and the 24th elsewhere."
+
+  - id: gst-pmt06
+    title: GST tax payment for the month (PMT-06)
+    category: tax
+    authority: GST
+    form: PMT-06
+    when: { registration: gst, not_registration: gst_composition, gst_frequency: quarterly }
+    schedule: { kind: monthly, day: 25, months_after: 1, skip_period_months: [3, 6, 9, 12] }
+    penalty: "Interest of 18% a year on tax paid late."
+    source: "QRMP scheme notification (monthly payment in the first two months of each quarter)"
+    description: "Under QRMP you still pay tax every month, in the first two months of each quarter."
+
+  - id: gst-gstr9
+    title: GSTR-9 (annual GST return)
+    category: tax
+    authority: GST
+    form: GSTR-9
+    when: { registration: gst, not_registration: gst_composition, turnover_min_band: "1.5-5cr" }
+    schedule: { kind: fixed_list, dates: [ { month: 12, day: 31, year_offset: 1, label: "annual" } ] }
+    penalty: "Late fee of Rs 200 per day (capped) for larger taxpayers."
+    source: "CGST Act 2017 s.44"
+    confirm_note: "Mandatory when yearly turnover is above Rs 2 crore; optional below that."
+    needs_confirmation: true
+    description: "Annual summary of all GST returns for the financial year."
+
+  - id: gst-gstr9c
+    title: GSTR-9C (GST reconciliation statement)
+    category: tax
+    authority: GST
+    form: GSTR-9C
+    when: { registration: gst, not_registration: gst_composition, turnover_min_band: "5-20cr" }
+    schedule: { kind: fixed_list, dates: [ { month: 12, day: 31, year_offset: 1, label: "annual" } ] }
+    penalty: "Same late fee as GSTR-9."
+    source: "CGST Act 2017 s.44; CGST Rules r.80"
+    confirm_note: "Required when yearly turnover is above Rs 5 crore."
+    needs_confirmation: true
+    description: "Self-certified reconciliation between your GST returns and audited accounts."
+
+  - id: gst-cmp08
+    title: CMP-08 (composition scheme tax payment)
+    category: tax
+    authority: GST
+    form: CMP-08
+    when: { registration: gst_composition }
+    schedule: { kind: quarterly, day: 18, months_after: 1 }
+    penalty: "Late fee under the GST Act plus 18% a year interest on unpaid tax."
+    source: "CGST Act 2017 s.10; CGST Rules r.62"
+    description: "Quarterly statement and payment of tax for businesses under the composition scheme."
+
+  - id: gst-gstr4
+    title: GSTR-4 (annual return, composition scheme)
+    category: tax
+    authority: GST
+    form: GSTR-4
+    when: { registration: gst_composition }
+    schedule: { kind: fixed_list, dates: [ { month: 4, day: 30, year_offset: 1, label: "annual" } ] }
+    penalty: "Late fee under the GST Act for every day of delay."
+    source: "CGST Act 2017 s.10, s.39(2); CGST Rules r.62"
+    description: "Yearly return for composition taxpayers, filed after the financial year ends."
+
+  # ------------------------------------------------------------------ TDS
+  - id: tds-payment
+    title: TDS payment
+    category: tax
+    authority: Income Tax
+    form: Challan 281
+    when: { registration: tds }
+    schedule:
+      kind: monthly
+      day: 7
+      months_after: 1
+      overrides: { "3": { months_after: 1, day: 30 } }   # tax deducted in March is due 30 April
+    penalty: "Interest of 1% a month for late deduction and 1.5% a month for late payment."
+    source: "Income-tax Act 1961 s.200, s.201(1A); Income-tax Rules r.30"
+    description: "Deposit the tax you deducted (on salaries, contractor payments, rent, professional fees) with the government."
+
+  - id: tds-return
+    title: TDS return
+    category: tax
+    authority: Income Tax
+    form: "24Q / 26Q"
+    when: { registration: tds }
+    schedule:
+      kind: fixed_list
+      dates:
+        - { month: 7, day: 31, year_offset: 0, label: "q1" }
+        - { month: 10, day: 31, year_offset: 0, label: "q2" }
+        - { month: 1, day: 31, year_offset: 1, label: "q3" }
+        - { month: 5, day: 31, year_offset: 1, label: "q4" }
+    penalty: "Late fee of Rs 200 per day (up to the TDS amount) under section 234E."
+    late_fee: { per_day: 200, cap_note: "The fee can never be more than the TDS in that return." }
+    source: "Income-tax Rules r.31A; Income-tax Act 1961 s.234E"
+    description: "Quarterly statement of tax deducted (Form 24Q for salaries, 26Q for other payments)."
+
+  # ------------------------------------------------------------------ Labour
+  - id: pf-monthly
+    title: Provident Fund (EPF) payment and return
+    category: labor
+    authority: EPFO
+    form: ECR
+    when: { registration: pf }
+    schedule: { kind: monthly, day: 15, months_after: 1 }
+    penalty: "Interest of 12% a year plus damages of up to 25% for late payment."
+    source: "EPF and Miscellaneous Provisions Act 1952 s.7Q, s.14B"
+    description: "Employer and employee PF contributions and the monthly ECR return."
+
+  - id: esi-monthly
+    title: ESI contribution
+    category: labor
+    authority: ESIC
+    form: ESI challan
+    when: { registration: esi }
+    schedule: { kind: monthly, day: 15, months_after: 1 }
+    penalty: "Interest of 12% a year on late contributions."
+    source: "ESI Act 1948 s.39, s.40"
+    description: "Employer and employee ESI contributions for the month."
+
+  - id: pt-karnataka
+    title: Professional Tax (Karnataka)
+    category: labor
+    authority: Commercial Taxes Department, Karnataka
+    form: PT payment
+    when: { registration: pt, state_in: ["29"] }
+    schedule: { kind: monthly, day: 20, months_after: 1 }
+    penalty: "Interest and penalty under the Karnataka Tax on Professions, Trades, Callings and Employments Act."
+    source: "Karnataka Tax on Professions, Trades, Callings and Employments Act 1976"
+    verify: true
+    needs_confirmation: true
+    confirm_note: "Confirm the current due date and whether you pay monthly or yearly with your CA."
+    description: "Professional tax deducted from employee salaries, paid to the state."
+
+  # ------------------------------------------------------------------ Income tax
+  - id: advance-tax
+    title: Advance tax installment
+    category: tax
+    authority: Income Tax
+    form: Challan 280
+    when: { always: true }
+    schedule:
+      kind: fixed_list
+      dates:
+        - { month: 6, day: 15, year_offset: 0, label: "i1", note: "15% of the year's tax" }
+        - { month: 9, day: 15, year_offset: 0, label: "i2", note: "45% cumulative" }
+        - { month: 12, day: 15, year_offset: 0, label: "i3", note: "75% cumulative" }
+        - { month: 3, day: 15, year_offset: 1, label: "i4", note: "100% cumulative" }
+    penalty: "Interest of 1% a month under sections 234B and 234C on any shortfall."
+    source: "Income-tax Act 1961 s.208, s.211, s.234B, s.234C"
+    confirm_note: "Applies if your estimated tax for the year is Rs 10,000 or more."
+    needs_confirmation: true
+    description: "Pay your income tax in installments during the year instead of all at the end."
+
+  - id: tax-audit-report
+    title: Tax audit report
+    category: tax
+    authority: Income Tax
+    form: "Form 3CA / 3CB-3CD"
+    when: { turnover_min_band: "1.5-5cr" }
+    schedule: { kind: fixed_list, dates: [ { month: 9, day: 30, year_offset: 1, label: "annual" } ] }
+    penalty: "Penalty of 0.5% of turnover (up to Rs 1.5 lakh) for not getting the audit done."
+    source: "Income-tax Act 1961 s.44AB, s.271B"
+    confirm_note: "Needed when turnover is above Rs 1 crore (Rs 10 crore if 95% or more of receipts and payments are digital), or under the presumptive scheme rules. Confirm with your CA."
+    needs_confirmation: true
+    description: "A chartered accountant audits your accounts for income tax before you file."
+
+  - id: itr-audit-cases
+    title: Income tax return (audit cases and companies)
+    category: tax
+    authority: Income Tax
+    form: "ITR-3 / 5 / 6"
+    when: { entity_in: [private_limited, public_limited, opc] }
+    schedule: { kind: fixed_list, dates: [ { month: 10, day: 31, year_offset: 1, label: "annual" } ] }
+    penalty: "Late filing fee of up to Rs 5,000 under section 234F, plus interest; some losses cannot be carried forward."
+    source: "Income-tax Act 1961 s.139(1), s.234F"
+    description: "Annual income tax return of the company."
+
+  - id: itr-firm-audit
+    title: Income tax return (audit cases)
+    category: tax
+    authority: Income Tax
+    form: "ITR-3 / 5"
+    when: { entity_in: [sole_proprietorship, partnership, llp, trust_society, other], turnover_min_band: "1.5-5cr" }
+    schedule: { kind: fixed_list, dates: [ { month: 10, day: 31, year_offset: 1, label: "annual" } ] }
+    penalty: "Late filing fee of up to Rs 5,000 under section 234F, plus interest."
+    source: "Income-tax Act 1961 s.139(1), s.234F"
+    confirm_note: "31 October applies if your accounts need a tax audit; otherwise the due date is 31 July."
+    needs_confirmation: true
+    description: "Annual income tax return when your accounts are audited."
+
+  - id: itr-firm-nonaudit
+    title: Income tax return (non-audit cases)
+    category: tax
+    authority: Income Tax
+    form: "ITR-3 / 4 / 5"
+    when: { entity_in: [sole_proprietorship, partnership, llp, trust_society, other], turnover_max_band: "20l-1.5cr" }
+    schedule: { kind: fixed_list, dates: [ { month: 7, day: 31, year_offset: 1, label: "annual" } ] }
+    penalty: "Late filing fee of up to Rs 5,000 under section 234F, plus interest."
+    source: "Income-tax Act 1961 s.139(1), s.234F"
+    confirm_note: "If your turnover is above Rs 1 crore a tax audit may apply and the due date moves to 31 October."
+    needs_confirmation: true
+    description: "Annual income tax return for businesses that do not need a tax audit."
+
+  # ------------------------------------------------------------------ Companies Act
+  - id: companies-agm
+    title: Annual General Meeting (AGM)
+    category: corporate
+    authority: MCA
+    form: AGM
+    when: { entity_in: [private_limited, public_limited] }
+    schedule: { kind: fixed_list, dates: [ { month: 9, day: 30, year_offset: 1, label: "annual" } ] }
+    penalty: "Fine on the company and every officer in default, with a daily fine for continuing default."
+    source: "Companies Act 2013 s.96"
+    description: "The AGM must be held within six months of the financial year end."
+
+  - id: companies-aoc4
+    title: AOC-4 (financial statements filing)
+    category: corporate
+    authority: MCA
+    form: AOC-4
+    when: { entity_in: [private_limited, public_limited] }
+    schedule: { kind: fixed_list, dates: [ { month: 10, day: 30, year_offset: 1, label: "annual" } ] }
+    penalty: "Additional fee of Rs 100 per day of delay (no cap), plus penalties on the company and directors."
+    late_fee: { per_day: 100 }
+    source: "Companies Act 2013 s.137, s.403 (due 30 days after the AGM, assuming an AGM on 30 September)"
+    confirm_note: "The due date is 30 days after your actual AGM date."
+    needs_confirmation: true
+    description: "File the audited financial statements with the Registrar of Companies."
+
+  - id: companies-mgt7
+    title: MGT-7 / MGT-7A (annual return)
+    category: corporate
+    authority: MCA
+    form: "MGT-7 / MGT-7A"
+    when: { entity_in: [private_limited, public_limited] }
+    schedule: { kind: fixed_list, dates: [ { month: 11, day: 29, year_offset: 1, label: "annual" } ] }
+    penalty: "Additional fee of Rs 100 per day of delay (no cap), plus penalties."
+    late_fee: { per_day: 100 }
+    source: "Companies Act 2013 s.92, s.403 (due 60 days after the AGM, assuming an AGM on 30 September)"
+    confirm_note: "The due date is 60 days after your actual AGM date. Small companies and OPCs file MGT-7A."
+    needs_confirmation: true
+    description: "Annual return with shareholder and director details."
+
+  - id: companies-dpt3
+    title: DPT-3 (return of deposits)
+    category: corporate
+    authority: MCA
+    form: DPT-3
+    when: { entity_in: [private_limited, public_limited] }
+    schedule: { kind: fixed_list, dates: [ { month: 6, day: 30, year_offset: 1, label: "annual" } ] }
+    penalty: "Fine under the Companies Act and additional filing fees."
+    source: "Companies (Acceptance of Deposits) Rules 2014 r.16 and r.16A"
+    description: "Every company reports deposits and certain outstanding loans or advances each year, even if there are none."
+
+  - id: companies-msme1
+    title: MSME Form 1 (dues to MSME suppliers)
+    category: corporate
+    authority: MCA
+    form: MSME-1
+    when: { entity_in: [private_limited, public_limited] }
+    schedule:
+      kind: fixed_list
+      dates:
+        - { month: 10, day: 31, year_offset: 0, label: "h1", note: "April to September" }
+        - { month: 4, day: 30, year_offset: 1, label: "h2", note: "October to March" }
+    penalty: "Fine and penalties on the company and officers under the Companies Act."
+    source: "MCA order on specified companies (Form MSME-1); MSMED Act 2006 s.15"
+    confirm_note: "Only if you owe a micro or small supplier money for more than 45 days. File a half-yearly return then."
+    needs_confirmation: true
+    description: "Half-yearly report of payments pending to MSME suppliers beyond 45 days."
+
+  - id: companies-dir3kyc
+    title: Director KYC (DIR-3 KYC)
+    category: corporate
+    authority: MCA
+    form: DIR-3 KYC
+    when: { entity_in: [private_limited, public_limited, opc, llp] }
+    schedule: { kind: fixed_list, dates: [ { month: 9, day: 30, year_offset: 0, label: "annual" } ] }
+    penalty: "Fee of Rs 5,000 per director for late KYC and the DIN is deactivated."
+    late_fee: { flat: 5000 }
+    source: "Companies (Appointment and Qualification of Directors) Rules 2014 r.12A"
+    verify: true
+    needs_confirmation: true
+    confirm_note: "MCA has changed how often KYC is required. Confirm the current frequency before relying on this date."
+    description: "Every director holding a DIN confirms their KYC details."
+
+  # ------------------------------------------------------------------ LLP
+  - id: llp-form11
+    title: LLP Form 11 (annual return)
+    category: corporate
+    authority: MCA
+    form: "LLP Form 11"
+    when: { entity_in: [llp] }
+    schedule: { kind: fixed_list, dates: [ { month: 5, day: 30, year_offset: 1, label: "annual" } ] }
+    penalty: "Additional fee of Rs 100 per day of delay (no cap)."
+    late_fee: { per_day: 100 }
+    source: "LLP Act 2008 s.35 (within 60 days of the financial year end)"
+    description: "Annual return of the LLP with partner and contribution details."
+
+  - id: llp-form8
+    title: LLP Form 8 (statement of accounts and solvency)
+    category: corporate
+    authority: MCA
+    form: "LLP Form 8"
+    when: { entity_in: [llp] }
+    schedule: { kind: fixed_list, dates: [ { month: 10, day: 30, year_offset: 1, label: "annual" } ] }
+    penalty: "Additional fee of Rs 100 per day of delay (no cap)."
+    late_fee: { per_day: 100 }
+    source: "LLP Act 2008 s.34 (within 30 days of six months from the financial year end)"
+    description: "Statement of accounts and solvency of the LLP."
+
+  # ------------------------------------------------------------------ Data protection (new law)
+  - id: dpdp-readiness
+    title: Data protection compliance (DPDP Act) - readiness deadline
+    category: other
+    authority: Data Protection Board of India
+    form: DPDP Act and Rules
+    when: { always: true }
+    schedule: { kind: once, date: "2027-05-13" }
+    penalty: "Penalties of up to Rs 250 crore for serious failures such as inadequate security safeguards."
+    source: "Digital Personal Data Protection Act 2023; DPDP Rules 2025 (phased commencement, full obligations around 13 May 2027)"
+    verify: true
+    needs_confirmation: true
+    confirm_note: "Applies if you collect personal data of customers, employees or others. Confirm the exact commencement dates in the official notification."
+    description: "Set up consent notices, security safeguards, a breach process and a grievance contact before the main obligations begin."
+
+# Things the app does not schedule yet (shown to the user honestly, not silently skipped)
+not_covered:
+  - { title: "Professional Tax in states other than Karnataka", reason: "Due dates differ by state; state schedules are being verified before we add them." }
+  - { title: "Shops and Establishment licence renewal", reason: "State-specific; add as a custom reminder for now." }
+  - { title: "Labour Welfare Fund", reason: "State-specific; add as a custom reminder for now." }
+  - { title: "Auditor appointment (Form ADT-1)", reason: "Due 15 days after the AGM that appoints the auditor, so it depends on your AGM date; add as a custom reminder." }
+  - { title: "One Person Company (OPC) filings", reason: "OPC due dates differ from other companies and are not added yet." }
+  - { title: "Licences and consents (FSSAI, pollution control, factory, fire)", reason: "Renewal dates are on your own certificates; upload them in Documents and the expiry date lands here." }
+  - { title: "TCS returns and e-invoicing", reason: "Not covered yet." }

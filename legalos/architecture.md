@@ -1,3 +1,5 @@
+> **OUTDATED - read docs/PROGRESS.md and docs/IMPLEMENTATION_PLAN.md instead.** This file describes the earlier prototype and contains claims that are not true of the current code (for example fake status badges, hybrid retrieval, mock-free vendor checks).
+
 # LegalOS — Comprehensive Architecture Document
 
 > **Version:** 1.0.0 · **Last updated:** August 2026  

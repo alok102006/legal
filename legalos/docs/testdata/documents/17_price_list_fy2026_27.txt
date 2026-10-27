@@ -1,0 +1,75 @@
+SHREEJI INDUSTRIAL PRODUCTS PRIVATE LIMITED
+Plot 66, GIDC Makarpura, Vadodara 390010, Gujarat
+GSTIN: 24ABCDE1234F1Z5
+
+DEALER AND OEM PRICE LIST - FINANCIAL YEAR 2026-27
+Price List No. SIP/PL/2026-27/01
+Effective from: 1 April 2026
+Valid until: 31 March 2027
+Currency: Indian Rupees (INR). All prices are ex-works Vadodara and exclusive of GST and freight.
+
+PRODUCT PRICE TABLE
+
+SKU          | Description                                          | Unit        | Price (Rs) | MOQ        | GST Rate
+SIP-FAS-001  | Hex bolt M8 x 40 mm, Grade 8.8, zinc plated          | per 100 pcs | 460        | 10 boxes   | 18%
+SIP-FAS-002  | Hex bolt M10 x 60 mm, Grade 8.8, zinc plated         | per 100 pcs | 820        | 10 boxes   | 18%
+SIP-FAS-003  | Hex nut M10, Grade 8, zinc plated                    | per 100 pcs | 310        | 20 boxes   | 18%
+SIP-FAS-004  | Spring washer M10, stainless steel 304               | per 100 pcs | 275        | 20 boxes   | 18%
+SIP-FAS-005  | Anchor fastener 12 x 100 mm, with nut                | per 50 pcs  | 1,240      | 5 boxes    | 18%
+SIP-BRG-101  | Deep groove ball bearing 6205-2RS                    | per piece   | 96         | 100 pcs    | 18%
+SIP-BRG-102  | Deep groove ball bearing 6308-2RS                    | per piece   | 285        | 50 pcs     | 18%
+SIP-BRG-103  | Pillow block bearing UCP 208                         | per piece   | 640        | 25 pcs     | 18%
+SIP-HYD-201  | Hydraulic hose assembly 1/2 inch, 1 metre, 2-wire    | per piece   | 1,150      | 20 pcs     | 18%
+SIP-HYD-202  | Hydraulic quick coupling 3/8 inch, steel             | per piece   | 385        | 50 pcs     | 18%
+SIP-PIP-301  | MS seamless pipe 25 NB, Schedule 40, 6 m length      | per length  | 3,480      | 20 lengths | 18%
+SIP-PIP-302  | HDPE pipe 63 mm PE-100, PN 10, 6 m length            | per length  | 1,360      | 50 lengths | 18%
+SIP-PIP-303  | PVC pipe 110 mm, 4 kgf, 3 m length                   | per length  | 585        | 50 lengths | 18%
+SIP-PKG-401  | Corrugated carton 5-ply, 450 x 300 x 250 mm          | per 100 pcs | 8,400      | 5 bundles  | 18%
+SIP-PKG-402  | HDPE woven sack 50 kg, laminated, white              | per 100 pcs | 6,250      | 10 bundles | 5%
+SIP-PKG-403  | BOPP packing tape 48 mm x 100 m, brown               | per 36 rolls| 2,160      | 5 cartons  | 18%
+SIP-SAF-501  | Safety shoes, steel toe, IS 15298, sizes 6 to 11     | per pair    | 890        | 24 pairs   | 18%
+SIP-SAF-502  | Industrial safety helmet, ISI marked, yellow         | per piece   | 185        | 50 pcs     | 18%
+SIP-LUB-601  | Industrial grease EP-2, lithium base, 18 kg pail     | per pail    | 3,950      | 4 pails    | 18%
+SIP-LUB-602  | Hydraulic oil ISO VG 68, 210 litre drum              | per drum    | 21,800     | 2 drums    | 18%
+
+NOTES AND CONDITIONS
+
+1. Validity. This price list is valid for orders received up to and including 31 March 2027. Prices for orders placed within the validity period and accepted by the Company will be honoured for delivery within sixty (60) days from the date of order confirmation, even if delivery falls after 31 March 2027. Prices shall be revised from 1 April 2027 by a new price list.
+
+2. GST. GST is charged extra at the rate shown against each item. The rates are those applicable on 1 April 2026 and will be adjusted automatically if the rate is changed by the Government, with effect from the date of the notification.
+
+3. Volume discount (on the total basic value of a single invoice, before GST):
+   (a) 3% for invoices of Rs 1,00,000 and above, up to Rs 4,99,999;
+   (b) 5% for invoices of Rs 5,00,000 and above, up to Rs 9,99,999;
+   (c) 7% for invoices of Rs 10,00,000 and above.
+   Volume discounts are not applicable to items SIP-LUB-601 and SIP-LUB-602, which are sold at net prices.
+
+4. Prompt payment discount. A cash discount of 1.5% on the basic value will be allowed if the payment is received in full within ten (10) days of the date of the invoice. No discount shall be allowed on overdue invoices.
+
+5. Payment terms. For approved dealers: 30 days from the date of invoice. For new customers and orders below Rs 50,000: 100% advance. Delayed payment will attract interest at 18% per annum from the due date.
+
+6. Freight and insurance. Freight is extra and is charged at actuals. Orders above Rs 2,00,000 in value for delivery within Gujarat are delivered free of freight to the destination, subject to a maximum of one (1) delivery point.
+
+7. Minimum order quantity (MOQ). The MOQ shown is per item per order. Orders below MOQ may be accepted at the discretion of the Company at a premium of 10% over the listed price. A box, bundle, carton or length means the standard packing of the Company, as stated in the product catalogue.
+
+8. Delivery. Standard delivery time is 7 to 10 working days from order confirmation for items in stock, and 4 weeks for SIP-HYD-201 and SIP-PIP-301 when ordered above 100 pieces or lengths.
+
+9. Returns. Goods supplied are not returnable unless defective. Complaints of defective goods must be made within seven (7) days of receipt, along with the photographs and the invoice number. Defective goods will be replaced or credited after inspection by the Company's Quality department.
+
+10. Warranty. The Company's goods are warranted to be free from manufacturing defects for twelve (12) months from the date of invoice, except consumable items (SIP-LUB-601 and SIP-LUB-602), which are warranted till the expiry date mentioned on the label.
+
+11. Price changes. The Company reserves the right to revise the prices at any time in the event of an increase of more than 5% in the price of steel, polymer or crude oil derivatives, upon fifteen (15) days' written notice to dealers. Orders accepted before the date of notice will not be affected.
+
+12. Taxes and statutory documents. Invoices are raised under the Central Goods and Services Tax Act, 2017 with the HSN code of each item, and e-way bills are generated for consignments of value above Rs 50,000. Dealers must furnish their GSTIN at the time of the order; invoices once raised cannot be re-issued in a different GSTIN or name after the filing of GSTR-1 for the month.
+
+13. Product specifications. All fasteners are supplied with a mill test certificate on request for orders above Rs 1,00,000. Bearings are supplied in the manufacturer's original sealed packing. Safety items conform to the Bureau of Indian Standards specification stated against the item, and the BIS licence number is printed on the product. Dimensions and tolerances are as per the product catalogue dated 1 April 2026, a copy of which is available on request.
+
+14. Special customers. Government departments, public sector undertakings and OEM customers with annual rate contracts shall be governed by the terms of their respective rate contracts, and this price list shall not apply to them except as a reference price. Rate contracts of one year commence on 1 April and are renewable subject to a written request received by 28 February.
+
+15. Samples. Samples of up to three (3) items per customer are supplied free of cost once in a financial year, subject to a limit of Rs 2,500 in value, and freight on samples is payable by the customer. Samples are not eligible for any discount or warranty.
+
+16. Jurisdiction. All disputes are subject to the exclusive jurisdiction of the courts at Vadodara.
+
+For orders and enquiries: sales@shreeji-industrial.example
+Authorised by: Mr. Rajesh Kothari, General Manager - Sales and Marketing
+Date of issue: 15 March 2026

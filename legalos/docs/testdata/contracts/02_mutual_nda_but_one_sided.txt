@@ -1,0 +1,131 @@
+MUTUAL NON-DISCLOSURE AGREEMENT
+
+THIS MUTUAL NON-DISCLOSURE AGREEMENT ("Agreement") is entered into on this 5th day of March 2026 ("Effective Date")
+
+BY AND BETWEEN
+
+HORIZON GLOBAL TECHNOLOGIES PTE. LTD., a company incorporated under the laws of Singapore, bearing Unique Entity Number 201912345Z and having its registered office at 80 Robinson Road, #12-04, Singapore 068898, hereinafter referred to as the "DISCLOSER" (which expression shall, unless repugnant to the context, include its affiliates, successors and assigns) of the FIRST PART;
+
+AND
+
+PRAKASH PRECISION COMPONENTS PRIVATE LIMITED, a company incorporated under the Companies Act, 2013, having CIN U29100GJ2014PTC123456 and its registered office at Plot 214, GIDC Industrial Estate, Vatva, Ahmedabad 382445, Gujarat, India, represented by its Managing Director Mr. Dharmesh Chandubhai Patel, hereinafter referred to as the "RECIPIENT" (which expression shall, unless repugnant to the context, include its successors and permitted assigns) of the SECOND PART.
+
+The Discloser and the Recipient are hereinafter individually referred to as a "Party" and together as the "Parties".
+
+BACKGROUND
+
+A. The Parties wish to explore a potential business relationship under which the Recipient may manufacture precision machined components for the Discloser's industrial automation products in India (the "Purpose").
+
+B. In connection with the Purpose, certain confidential and proprietary information may be disclosed between the Parties. The Parties have agreed to protect such information on a mutual basis, as set out in this Agreement.
+
+THE PARTIES AGREE AS FOLLOWS:
+
+1. DEFINITIONS
+
+1.1 "Confidential Information" means all information, in any form or medium, whether written, oral, electronic or visual, disclosed by or on behalf of the Discloser to the Recipient, whether or not marked as confidential, including without limitation drawings, specifications, tolerances, CAD files, source code, formulae, process know-how, pricing, customer and supplier lists, business plans, financial information, and any information which a reasonable person would consider to be confidential, and all notes, analyses and derivatives prepared by the Recipient which contain or reflect such information.
+
+1.2 "Representatives" means the directors, officers, employees, auditors, lawyers, consultants, financiers and sub-contractors of the Recipient.
+
+1.3 "Affiliate" means any entity that directly or indirectly controls, is controlled by or is under common control with a Party, and includes any entity in which a Party holds ten per cent (10%) or more of the voting rights.
+
+2. OBLIGATIONS OF THE RECIPIENT
+
+2.1 The Recipient shall hold all Confidential Information in strict confidence, shall use it solely for the Purpose and shall not disclose it to any person other than those of its Representatives who need to know it for the Purpose and who are bound in writing by obligations no less onerous than those contained herein.
+
+2.2 The Recipient shall protect the Confidential Information with at least the highest standard of care it applies to its own most sensitive information and in any case no less than the standard of care that is reasonable in the industry.
+
+2.3 The Recipient shall not copy, reverse engineer, disassemble or analyse any sample, prototype or software furnished by the Discloser, and shall not file any patent, design or other intellectual property application that incorporates or is derived from the Confidential Information.
+
+2.4 The Recipient shall promptly, and in any event within twenty-four (24) hours, notify the Discloser in writing of any actual or suspected unauthorised use or disclosure of Confidential Information, and shall at its own cost take all steps required by the Discloser to remedy the same.
+
+2.5 The Recipient shall be liable for any breach of this Agreement by any of its Representatives as if such breach were its own.
+
+2.6 The Recipient shall, within three (3) days of a written request by the Discloser, return or destroy all Confidential Information and certify such destruction by an affidavit sworn by a director of the Recipient. The Recipient shall not be entitled to retain any copy for legal, regulatory or backup purposes.
+
+3. OBLIGATIONS OF THE DISCLOSER
+
+3.1 The Discloser shall endeavour to disclose Confidential Information which it considers relevant to the Purpose. Nothing in this Agreement shall oblige the Discloser to disclose any particular information, and the Discloser makes no representation as to the accuracy or completeness of any information disclosed.
+
+3.2 Any information disclosed by the Recipient to the Discloser shall be treated by the Discloser as Confidential Information only if it is disclosed in writing, marked "Confidential" at the time of disclosure, and confirmed in writing as confidential within seven (7) days of disclosure. The Discloser shall be free to use any other information received from the Recipient for any purpose.
+
+4. EXCLUSIONS
+
+4.1 The obligations in Clause 2 shall not apply to information that the Recipient demonstrates by contemporaneous written records (a) was lawfully in the public domain at the time of disclosure through no act or omission of the Recipient or its Representatives; or (b) was lawfully known to the Recipient prior to disclosure, as evidenced by documents dated before the Effective Date.
+
+4.2 Where the Recipient is required to disclose Confidential Information by law, regulation or order of a court or authority, it shall, to the extent legally permissible, give the Discloser not less than five (5) business days' prior written notice and shall disclose only the minimum information so required.
+
+5. TERM AND SURVIVAL
+
+5.1 This Agreement shall come into force on the Effective Date and, unless extended by the Discloser in writing, shall continue for a period of seven (7) years from the Effective Date (the "Term"), irrespective of whether the Parties proceed with the Purpose.
+
+5.2 The obligations of the Recipient shall survive for seven (7) years after the expiry or termination of this Agreement or the termination of the Parties' discussions, whichever is later, and in respect of trade secrets and source code, shall survive in perpetuity.
+
+5.3 The Recipient may not terminate this Agreement during the Term. The Discloser may terminate it at any time by written notice.
+
+6. REMEDIES
+
+6.1 The Recipient acknowledges that any breach or threatened breach of this Agreement would cause irreparable harm to the Discloser for which damages would not be an adequate remedy. The Discloser shall accordingly be entitled to seek injunctive relief, specific performance and any other equitable relief without the requirement of posting any bond, security or undertaking as to damages, and without the need to prove actual damage.
+
+6.2 The Recipient shall indemnify the Discloser against all losses, liabilities, damages, costs and expenses (including legal fees on a full indemnity basis) arising from any breach of this Agreement by the Recipient or its Representatives. The Recipient's liability under this Agreement shall not be subject to any limit or exclusion.
+
+6.3 Without prejudice to Clause 6.2, the Recipient shall pay to the Discloser, as a genuine pre-estimate of loss, an amount of Rs 25,00,000/- (Rupees Twenty-Five Lakh only) for each instance of breach, whether or not any actual loss is suffered. The Discloser's remedies are cumulative.
+
+7. NO LICENCE; OWNERSHIP
+
+7.1 All Confidential Information remains the exclusive property of the Discloser. No licence or right under any patent, copyright, trade secret or other intellectual property right is granted by this Agreement, except the limited right to use Confidential Information for the Purpose.
+
+7.2 Any improvement, modification, suggestion, feedback or derivative work made by the Recipient in relation to the Confidential Information, or in the course of the Purpose, shall vest in the Discloser, and the Recipient hereby assigns all rights therein to the Discloser absolutely.
+
+8. NO OBLIGATION; NON-SOLICITATION
+
+8.1 This Agreement does not oblige either Party to enter into any further agreement. Any business relationship shall be governed only by a definitive written agreement signed by both Parties.
+
+8.2 For the Term, the Recipient shall not, directly or indirectly, solicit or engage any customer, supplier or employee of the Discloser or its Affiliates with whom the Recipient came into contact through the Purpose.
+
+9. GOVERNING LAW AND DISPUTE RESOLUTION
+
+9.1 This Agreement and any dispute arising out of or in connection with it shall be governed by and construed in accordance with the laws of the Republic of Singapore, without regard to its conflict of laws principles.
+
+9.2 Any dispute arising out of or in connection with this Agreement, including any question regarding its existence, validity or termination, shall be referred to and finally resolved by arbitration administered by the Singapore International Arbitration Centre ("SIAC") in accordance with its Arbitration Rules for the time being in force. The seat of arbitration shall be Singapore. The tribunal shall consist of one (1) arbitrator appointed by the President of the SIAC Court. The language of the arbitration shall be English.
+
+9.3 Notwithstanding Clause 9.2, the Discloser may at any time approach any court of competent jurisdiction in any country for injunctive or other interim relief. The Recipient irrevocably submits to the jurisdiction of such courts and waives any objection of inconvenient forum.
+
+9.4 The Recipient shall bear the costs of the arbitration if the Discloser prevails in whole or in part.
+
+10. ASSIGNMENT
+
+10.1 The Discloser may assign or novate this Agreement or any of its rights or obligations to any Affiliate or successor without notice to the Recipient. The Recipient may not assign or transfer any of its rights or obligations without the prior written consent of the Discloser.
+
+11. GENERAL
+
+11.1 Entire Agreement. This Agreement constitutes the entire agreement between the Parties on its subject matter and supersedes all prior understandings.
+
+11.2 Amendment. No amendment shall be effective unless in writing and signed by both Parties, provided that the Discloser may update Annexure A (Information Security Requirements) by notice to the Recipient, and such update shall bind the Recipient on the expiry of three (3) days from the notice.
+
+11.3 Waiver. A failure or delay by the Discloser in exercising a right shall not operate as a waiver. A waiver by the Recipient shall be effective only if in writing.
+
+11.4 Severability. If any provision is held to be invalid or unenforceable, the remaining provisions shall continue in force.
+
+11.5 Notices. Notices shall be in writing, in English, and shall be sent by courier or email to the addresses stated above. A notice sent by email shall be deemed received on the day of sending.
+
+11.6 Counterparts. This Agreement may be executed in counterparts, including by electronic signature, each of which is an original.
+
+11.7 Stamp Duty. The Recipient shall be responsible for payment of any stamp duty payable in India on this Agreement under the Indian Stamp Act, 1899 as applicable in the State of Gujarat, and for any penalty thereon.
+
+ANNEXURE A - INFORMATION SECURITY REQUIREMENTS
+
+1. The Recipient shall store Confidential Information only on encrypted systems located in India and accessible only to named individuals approved by the Discloser.
+2. The Recipient shall maintain a register of every individual who has accessed Confidential Information and shall produce it to the Discloser on demand.
+3. The Recipient shall permit the Discloser, on twenty-four (24) hours' notice, to audit its premises and systems.
+
+IN WITNESS WHEREOF the Parties have executed this Agreement on the Effective Date.
+
+For HORIZON GLOBAL TECHNOLOGIES PTE. LTD.
+Name: Mr. Daniel K. Lim
+Designation: Director, Procurement APAC
+Signature: ____________________
+
+For PRAKASH PRECISION COMPONENTS PRIVATE LIMITED
+Name: Mr. Dharmesh Chandubhai Patel
+Designation: Managing Director
+Signature: ____________________

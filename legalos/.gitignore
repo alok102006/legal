@@ -63,3 +63,7 @@ model_cache/
 *.njsproj
 *.sln
 *.sw?
+
+# AI response cache (contains document text)
+storage/
+backend/storage/

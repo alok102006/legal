@@ -1,3 +1,5 @@
+> **OUTDATED - read docs/PROGRESS.md and docs/IMPLEMENTATION_PLAN.md instead.** This file describes the earlier prototype and contains claims that are not true of the current code (for example fake status badges, hybrid retrieval, mock-free vendor checks).
+
 # Sprinto Platform Analysis & LegalOS Integration Roadmap
 
 ## Executive Summary

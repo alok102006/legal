@@ -1,43 +1,96 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
+from typing import List, Literal, Optional
+
 from pydantic import BaseModel, Field
-from typing import List, Optional
 
 
-class DraftReplySchema(BaseModel):
+class DraftOut(BaseModel):
     id: uuid.UUID
-    notice_id: uuid.UUID
+    version: int
     reply_text: str
+    placeholders: List[str] = []
+    points_to_confirm: List[str] = []
+    documents_to_gather: List[str] = []
+    author: str
+    instructions: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
 
 
-class NoticeSummarySchema(BaseModel):
+class CaseListItem(BaseModel):
     id: uuid.UUID
-    document_id: Optional[uuid.UUID] = None
+    title: Optional[str] = None
     notice_type: Optional[str] = None
+    type_label: Optional[str] = None
     urgency: Optional[str] = None
+    status: str
+    stage: Optional[str] = None
+    issuer_name: Optional[str] = None
+    amount_claimed: Optional[float] = None
+    response_deadline: Optional[date] = None
+    days_left: Optional[int] = None
+    review_status: str = "draft"
+    error_kind: Optional[str] = None
+    error_message: Optional[str] = None
+    source_name: Optional[str] = None
     created_at: datetime
-    original_filename: Optional[str] = None
-
-    model_config = {"from_attributes": True}
 
 
-class NoticeDetailSchema(BaseModel):
-    id: uuid.UUID
-    document_id: Optional[uuid.UUID] = None
-    raw_text: str
-    notice_type: Optional[str] = None
-    urgency: Optional[str] = None
-    created_at: datetime
-    replies: List[DraftReplySchema] = []
-
-    model_config = {"from_attributes": True}
+class KeyQuote(BaseModel):
+    kind: Literal["deadline", "amount", "demand"]
+    text: str
+    verified: bool = False
 
 
-# Schema for structural parsing of AI responses
-class LegalNoticeAIResponse(BaseModel):
-    notice_type: str = Field(description="Must be one of: 'demand', 'show_cause', 'summons', 'other'")
-    urgency: str = Field(description="Must be one of: 'low', 'medium', 'high', 'critical'")
-    reply_text: str = Field(description="The full draft reply letter text.")
+class CaseDetail(CaseListItem):
+    reference_number: Optional[str] = None
+    notice_date: Optional[date] = None
+    received_date: Optional[date] = None
+    response_days: Optional[int] = None
+    deadline_source: Optional[str] = None
+    deadline_note: Optional[str] = None
+    deadline_quote: Optional[str] = None
+    deadline_verified: bool = False
+    deadline_rule: Optional[str] = None            # citation, when the date comes from a statutory window
+    received_confirmed: bool = True
+    needs_received_date: bool = False              # the deadline counts from receipt and the user has not said when it arrived
+    issuer_role: Optional[str] = None
+    addressed_to: Optional[str] = None
+    summary_points: List[str] = []
+    demands: List[str] = []
+    statutes: List[str] = []
+    consequences: Optional[str] = None
+    legal_note: Optional[str] = None
+    legal_ref: Optional[str] = None
+    legal_if_ignored: Optional[str] = None
+    if_ignored: Optional[str] = None
+    actions: List[str] = []
+    actions_done: List[int] = []
+    key_quotes: List[KeyQuote] = []
+    ocr_used: bool = False
+    in_calendar: bool = False
+    raw_text: Optional[str] = None
+    drafts: List[DraftOut] = []
+
+
+class TextIn(BaseModel):
+    text: str = Field(min_length=40, max_length=120_000)
+    title: Optional[str] = Field(default=None, max_length=200)
+    received_date: Optional[date] = None
+
+
+class CaseUpdate(BaseModel):
+    received_date: Optional[date] = None
+    review_status: Optional[Literal["draft", "ready_for_lawyer", "lawyer_approved"]] = None
+    status: Optional[Literal["analyzed", "closed"]] = None
+    actions_done: Optional[List[int]] = None
+
+
+class RegenerateIn(BaseModel):
+    instructions: Optional[str] = Field(default=None, max_length=300)
+
+
+class SaveDraftIn(BaseModel):
+    reply_text: str = Field(min_length=20, max_length=20_000)

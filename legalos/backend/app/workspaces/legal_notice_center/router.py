@@ -1,162 +1,83 @@
 import uuid
-from typing import List
-from pydantic import BaseModel
-from fastapi import APIRouter, Depends, UploadFile, File, BackgroundTasks, HTTPException
+from datetime import date
+from typing import List, Optional
+
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_db_session, get_current_user
-from app.shared.auth.auth_service import UserStub
-from app.shared.exceptions import BadRequestException
-from app.workspaces.legal_notice_center import service, schemas
+from app.dependencies import RequestContext, get_ctx, require_writer
+from app.shared.db.session import get_db_session
+from app.workspaces.legal_notice_center import schemas, service
 
 router = APIRouter()
 
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB limit
-ALLOWED_EXTENSIONS = {"pdf", "docx", "txt", "md"}
+
+def _item(case):
+    return service.to_list_item(case)
 
 
-class PasteTextRequest(BaseModel):
-    title: str
-    text: str
+@router.get("", response_model=List[schemas.CaseListItem])
+async def list_notices(db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(get_ctx)):
+    return await service.list_cases(db, ctx)
 
 
-@router.post("/analyze/file", response_model=schemas.NoticeSummarySchema)
-async def analyze_notice_file(
+@router.post("/upload", response_model=schemas.CaseListItem, status_code=202)
+async def upload_notice(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    received_date: Optional[date] = Form(None),
     db: AsyncSession = Depends(get_db_session),
-    current_user: UserStub = Depends(get_current_user)
+    ctx: RequestContext = Depends(require_writer),
 ):
-    """
-    Upload notice file (PDF, DOCX, TXT, MD) and schedule background analysis.
-    """
-    file_bytes = await file.read()
-    if len(file_bytes) > MAX_FILE_SIZE:
-        raise BadRequestException(f"File size exceeds maximum allowed 10MB.")
-        
-    filename = file.filename or "notice.txt"
-    if "." not in filename:
-        raise BadRequestException("Missing file extension. Supported: PDF, DOCX, TXT.")
-        
-    ext = filename.lower().split(".")[-1]
-    if ext not in ALLOWED_EXTENSIONS:
-        raise BadRequestException(f"Unsupported file format '{ext}'.")
-        
-    # 1. Create document stub and notice in DB
-    notice = await service.create_and_start_analysis(
-        session=db,
-        file_bytes=file_bytes,
-        filename=filename,
-        user_id=current_user.id
-    )
-    # Commit to get ID
-    await db.commit()
-    
-    # 2. Trigger background analysis task
-    background_tasks.add_task(
-        service.run_async_notice_analysis,
-        notice_id=notice.id,
-        file_bytes=file_bytes,
-        filename=filename,
-        document_id=notice.document_id
-    )
-    
-    return {
-        "id": notice.id,
-        "document_id": notice.document_id,
-        "notice_type": notice.notice_type,
-        "urgency": notice.urgency,
-        "created_at": notice.created_at,
-        "original_filename": filename
-    }
+    case = await service.create_from_file(db, ctx, await file.read(), file.filename or "notice.txt", received_date)
+    background_tasks.add_task(service.run_analysis, case.id)
+    return _item(case)
 
 
-@router.post("/analyze/text", response_model=schemas.NoticeSummarySchema)
-async def analyze_notice_text(
+@router.post("/text", response_model=schemas.CaseListItem, status_code=202)
+async def paste_notice(
+    body: schemas.TextIn,
     background_tasks: BackgroundTasks,
-    payload: PasteTextRequest,
     db: AsyncSession = Depends(get_db_session),
-    current_user: UserStub = Depends(get_current_user)
+    ctx: RequestContext = Depends(require_writer),
 ):
-    """
-    Accepts pasted notice text, wraps it as virtual txt file, and schedules analysis.
-    """
-    if not payload.text.strip():
-        raise BadRequestException("Notice text content cannot be empty.")
-        
-    filename = f"{payload.title.strip().replace(' ', '_') or 'pasted_notice'}.txt"
-    file_bytes = payload.text.strip().encode("utf-8")
-    
-    # 1. Create document stub and notice in DB
-    notice = await service.create_and_start_analysis(
-        session=db,
-        file_bytes=file_bytes,
-        filename=filename,
-        user_id=current_user.id
-    )
-    await db.commit()
-    
-    # 2. Trigger background analysis task
-    background_tasks.add_task(
-        service.run_async_notice_analysis,
-        notice_id=notice.id,
-        file_bytes=file_bytes,
-        filename=filename,
-        document_id=notice.document_id
-    )
-    
-    return {
-        "id": notice.id,
-        "document_id": notice.document_id,
-        "notice_type": notice.notice_type,
-        "urgency": notice.urgency,
-        "created_at": notice.created_at,
-        "original_filename": filename
-    }
+    case = await service.create_from_text(db, ctx, body.text, body.title, body.received_date)
+    background_tasks.add_task(service.run_analysis, case.id)
+    return _item(case)
 
 
-@router.get("/", response_model=List[schemas.NoticeSummarySchema])
-async def list_notices(
-    db: AsyncSession = Depends(get_db_session),
-    current_user: UserStub = Depends(get_current_user)
-):
-    """Retrieves notice summaries history."""
-    return await service.list_notices(db)
+@router.get("/{case_id}", response_model=schemas.CaseDetail)
+async def get_notice(case_id: uuid.UUID, db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(get_ctx)):
+    return await service.get_detail(db, ctx, case_id)
 
 
-@router.get("/{id}", response_model=schemas.NoticeDetailSchema)
-async def get_notice(
-    id: uuid.UUID,
-    db: AsyncSession = Depends(get_db_session),
-    current_user: UserStub = Depends(get_current_user)
-):
-    """Retrieves full notice profile with generated replies."""
-    notice = await service.get_notice_details(db, id)
-    if not notice:
-        raise HTTPException(status_code=404, detail="Legal notice not found.")
-    return notice
+@router.post("/{case_id}/retry", response_model=schemas.CaseListItem, status_code=202)
+async def retry_notice(case_id: uuid.UUID, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db_session),
+                       ctx: RequestContext = Depends(require_writer)):
+    case = await service.prepare_retry(db, ctx, case_id)
+    background_tasks.add_task(service.run_analysis, case.id)
+    return _item(case)
 
 
-@router.post("/{id}/regenerate", response_model=schemas.DraftReplySchema)
-async def regenerate_reply(
-    id: uuid.UUID,
-    db: AsyncSession = Depends(get_db_session),
-    current_user: UserStub = Depends(get_current_user)
-):
-    """Triggers RAG retrieval and regenerates response letter for a notice."""
-    draft = await service.regenerate_reply(db, id)
-    await db.commit()
-    return draft
+@router.patch("/{case_id}", response_model=schemas.CaseDetail)
+async def update_notice(case_id: uuid.UUID, body: schemas.CaseUpdate, db: AsyncSession = Depends(get_db_session),
+                        ctx: RequestContext = Depends(require_writer)):
+    return service.to_detail(await service.update_case(db, ctx, case_id, body.model_dump(exclude_unset=True)))
 
 
-@router.delete("/{id}", status_code=204)
-async def delete_notice(
-    id: uuid.UUID,
-    db: AsyncSession = Depends(get_db_session),
-    current_user: UserStub = Depends(get_current_user)
-):
-    """Deletes a legal notice, its draft replies, document file, and Qdrant vectors."""
-    await service.delete_notice_and_document(db, id)
-    await db.commit()
-    return None
+@router.post("/{case_id}/draft", response_model=schemas.CaseDetail)
+async def regenerate_draft(case_id: uuid.UUID, body: schemas.RegenerateIn, db: AsyncSession = Depends(get_db_session),
+                           ctx: RequestContext = Depends(require_writer)):
+    return service.to_detail(await service.regenerate_draft(db, ctx, case_id, body.instructions))
 
+
+@router.put("/{case_id}/draft", response_model=schemas.CaseDetail)
+async def save_draft(case_id: uuid.UUID, body: schemas.SaveDraftIn, db: AsyncSession = Depends(get_db_session),
+                     ctx: RequestContext = Depends(require_writer)):
+    return service.to_detail(await service.save_user_draft(db, ctx, case_id, body.reply_text))
+
+
+@router.delete("/{case_id}")
+async def delete_notice(case_id: uuid.UUID, db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(require_writer)):
+    await service.delete_case(db, ctx, case_id)
+    return {"status": "deleted"}

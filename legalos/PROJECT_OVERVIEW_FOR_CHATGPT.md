@@ -1,3 +1,5 @@
+> **OUTDATED - read docs/PROGRESS.md and docs/IMPLEMENTATION_PLAN.md instead.** This file describes the earlier prototype and contains claims that are not true of the current code (for example fake status badges, hybrid retrieval, mock-free vendor checks).
+
 # LegalOS — AI Legal & Compliance Operating System
 > **Comprehensive System & Architecture Overview for Resume Enhancement & Technical Interview Preparation**
 > 

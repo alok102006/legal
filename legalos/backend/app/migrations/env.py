@@ -9,12 +9,12 @@ from app.config import settings
 from app.shared.db.base import Base
 
 # Import all models here so that Alembic's target_metadata can discover them
-from app.shared.db.models import User, Document
-from app.workspaces.contract_intelligence.models import Contract, Clause, NegotiationSuggestion
-from app.workspaces.vendor_intelligence.models import VendorCheck
-from app.workspaces.legal_notice_center.models import Notice, DraftReply
+from app.shared.db.models import User, Document, Organization, Membership, AuditEvent
+from app.workspaces.contract_intelligence.models import Contract, Clause, NegotiationSuggestion, Segment, Finding, ChatMessage
+from app.workspaces.vendor_intelligence.models import VendorCheck, Vendor
+from app.workspaces.legal_notice_center.models import Notice, DraftReply, NoticeCase, ReplyDraft
 from app.workspaces.compliance_center.models import ComplianceTask, ComplianceDocumentAnalysis
-from app.workspaces.knowledge_hub.models import RegisteredCompany, CompanyDocument
+from app.workspaces.knowledge_hub.models import RegisteredCompany, CompanyDocument, KnowledgeDocument, DocChunk, Conversation, ChatTurn
 
 # Alembic config object
 config = context.config
