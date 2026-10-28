@@ -116,7 +116,9 @@ def test_daily_quota_rotates_to_the_next_key_before_changing_model(gemini):
     calls2 = gemini(["again"], keys=2)
     assert llm_client.generate("hello") == "again" and calls2["models"] == ["m1"]
     q = gemini_provider.quota_status()
-    assert q["keys"] == 2 and q["exhausted"] == [{"key": 1, "model": "m1", "resets_in_minutes": 59}]
+    # a daily quota comes back at the Pacific-time midnight reset (Google's retryDelay is only the per-minute window)
+    assert q["keys"] == 2 and [(e["key"], e["model"]) for e in q["exhausted"]] == [(1, "m1")]
+    assert 0 <= q["exhausted"][0]["resets_in_minutes"] <= 24 * 60
 
 
 def test_fallback_model_rejecting_the_request_shape_moves_on(gemini):

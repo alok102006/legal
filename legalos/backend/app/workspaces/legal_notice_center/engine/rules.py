@@ -1,148 +1,58 @@
-"""Deterministic notice rules: response deadline, urgency, statutory windows and law notes.
+"""Deterministic notice rules: the response deadline, urgency, and views of the notice catalog.
 
-The AI reads the notice; these rules decide the date arithmetic and the urgency, so they are explainable
-and testable. Every statutory window and law note carries its source. Legal notes are general information
-marked "confirm with a lawyer". A deadline is never invented:
+The AI reads the notice; these rules do the date arithmetic and decide urgency, so both are explainable and testable.
+A deadline is never invented. Every candidate date carries its basis:
 
-  stated            the notice itself gives a date or a number of days (verified when the quote is found in the text)
-  statutory_default the notice states nothing, and a rule below gives a window for this notice type (cited)
-  unknown           neither - the UI says so and asks the user to check the notice
+  stated date      the notice names a date ("by 30 October 2026")              -> verified by the deadline quote
+  stated period    the notice gives a period ("within 7 days of receipt")      -> verified by the deadline quote
+  hearing          the notice fixes a hearing / appearance date                -> verified by the hearing quote
+  statutory        a statute fixes the window for this notice type (catalog)   -> act + section
+
+The EARLIEST candidate is the deadline (a wrong later date costs more than a wrong earlier one), and the note says
+why and lists the others. Missing inputs are asked for, not guessed: a period counted from the notice date with no
+readable notice date yields no candidate and asks for the date.
+
+  source: stated | statutory_default | unknown   (kept for stored cases and the UI)
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, timedelta
-from typing import NamedTuple, Optional
+from typing import List, NamedTuple, Optional, Tuple
 
+from dateutil.relativedelta import relativedelta
+
+from app.workspaces.legal_notice_center.engine import dates
+from app.workspaces.legal_notice_center.engine.catalog import CATALOG, HANDLER_LABELS, NoticeRule, StatutoryWindow, rule_for
 from app.workspaces.legal_notice_center.engine.schemas import NoticeFacts, NoticeType
 
-RULES_VERSION = "2026-10-27.2"
+RULES_VERSION = "2026-10-28.1"
 
-TYPE_LABELS = {
-    NoticeType.cheque_bounce: "Cheque bounce notice",
-    NoticeType.legal_demand: "Payment demand / recovery notice",
-    NoticeType.gst_notice: "GST notice",
-    NoticeType.income_tax_notice: "Income tax notice",
-    NoticeType.labour_notice: "Labour / PF / ESI notice",
-    NoticeType.msme_delayed_payment: "MSME delayed-payment notice",
-    NoticeType.consumer_complaint: "Consumer complaint",
-    NoticeType.ip_notice: "Trademark / IP notice",
-    NoticeType.employment_dispute: "Employee claim",
-    NoticeType.tenancy_notice: "Rent / eviction notice",
-    NoticeType.court_summons: "Court summons",
-    NoticeType.defamation: "Defamation notice",
-    NoticeType.contract_breach: "Contract breach notice",
-    NoticeType.regulatory_other: "Regulatory notice",
-    NoticeType.other: "Other notice",
-}
-
-
-# ---------------------------------------------------------------- statutory reply windows
-
-@dataclass(frozen=True)
-class StatutoryWindow:
-    days: int
-    anchor: str          # what the days count from: "receipt"
-    citation: str        # the section that gives the window
-    note: str            # one line shown to the user
-
-
-# Used ONLY when the notice itself states no deadline. Add a type here only when the statute fixes the window.
-STATUTORY_WINDOWS = {
-    NoticeType.cheque_bounce: StatutoryWindow(
-        15, "receipt", "Negotiable Instruments Act 1881, s.138(b)-(c)",
-        "The drawer has 15 days from receiving the demand notice to pay the cheque amount."),
-    NoticeType.consumer_complaint: StatutoryWindow(
-        30, "receipt", "Consumer Protection Act 2019, s.38(2)(a)",
-        "The written version is due within 30 days of receiving the complaint; the Commission may allow up to 15 more days."),
-}
-
-# Windows that exist in law but depend on the notice (so we only mention them, never use them as a deadline).
-# GST show-cause notices commonly allow 30 days (CGST Rules r.142, r.99 for scrutiny), income-tax notices fix a date
-# (Income-tax Act 1961 s.142(1), s.148A(b): 7 to 30 days as specified in the notice) - the notice states it.
+TYPE_LABELS = {t: r.label for t, r in CATALOG.items()}
+STATUTORY_WINDOWS = {t: r.window for t, r in CATALOG.items() if r.window}
 
 
 class LegalNote(NamedTuple):
     text: str            # 2-3 lines in plain English: what the law generally says
     ref: str             # section + act cited (the "source")
-    if_ignored: str      # what generally happens if the notice is ignored
+    if_ignored: str      # the consequence chain if the notice is ignored
 
 
-LEGAL_NOTES = {
-    NoticeType.cheque_bounce: LegalNote(
-        "A cheque that bounces for insufficient funds is a criminal offence if the drawer does not pay within 15 days of receiving the sender's "
-        "demand notice. The sender must have issued the notice within 30 days of the bank's return memo. After the 15 days, they have one month to file a complaint.",
-        "Negotiable Instruments Act 1881, ss.138 and 142",
-        "The sender can file a criminal complaint. The penalty can be up to 2 years in jail, a fine up to twice the cheque amount, or both."),
-    NoticeType.legal_demand: LegalNote(
-        "A demand notice is not a court order. It is the step before a recovery suit, and the reply you send is read by the court later. Reply in writing "
-        "within the time it states, and do not admit what you do not accept.",
-        "Indian Contract Act 1872; Code of Civil Procedure 1908; Limitation Act 1963",
-        "The sender can file a civil recovery suit for the amount with interest and costs."),
-    NoticeType.gst_notice: LegalNote(
-        "A show-cause notice asks you to explain a tax demand or mismatch with documents. Replying on the GST portal within the stated time lets the officer "
-        "consider your side. Paying the tax and interest within 30 days of a show-cause notice can reduce or remove the penalty. "
-        "For FY 2024-25 onward the same scheme sits in s.74A.",
-        "CGST Act 2017, ss.73, 74 (s.74A from FY 2024-25)",
-        "The officer can pass an order confirming the demand with interest and penalty, without hearing you. You would then have to appeal, and recovery can start."),
-    NoticeType.income_tax_notice: LegalNote(
-        "Reply on the income-tax e-filing portal by the date in the notice, with supporting documents. The section named in the notice tells you whether this is an "
-        "inquiry (s.142(1)), a scrutiny (s.143(2)) or a reassessment (s.148 / 148A).",
-        "Income-tax Act 1961, ss.142(1), 143(2), 148, 148A, 144",
-        "The officer can assess your income on their own estimate (best-judgment assessment) and levy a penalty for not complying with the notice."),
-    NoticeType.labour_notice: LegalNote(
-        "PF and ESI authorities can inquire into unpaid or late contributions and call you to a hearing. Bring proof of contributions paid (challans, returns). "
-        "Late payment carries interest and damages.",
-        "EPF Act 1952, ss.7A, 7Q, 14B; ESI Act 1948, s.45A",
-        "The authority can decide the dues without your records, add interest and damages, and recover them from your bank account."),
-    NoticeType.msme_delayed_payment: LegalNote(
-        "A buyer must pay a registered micro or small supplier by the agreed date, and in any case within 45 days of acceptance of the goods. "
-        "Beyond that, compound interest at three times the RBI bank rate runs, and the supplier can approach the MSE Facilitation Council.",
-        "MSMED Act 2006, ss.15, 16, 18, 19",
-        "Interest keeps adding up, and the Council can pass an award. To challenge an award you must first deposit 75% of it."),
-    NoticeType.consumer_complaint: LegalNote(
-        "If a consumer complaint is filed against you, you must file your written version within 30 days of receiving it. The Commission can allow up to 15 more days, "
-        "and no more.",
-        "Consumer Protection Act 2019, s.38",
-        "The Commission can decide the case on the complainant's version alone, which can mean a refund, compensation and costs."),
-    NoticeType.ip_notice: LegalNote(
-        "A cease-and-desist letter claims you are using a mark, name or content that belongs to the sender. The law has no fixed reply time, but a court can grant "
-        "a quick injunction, so a prompt written reply matters.",
-        "Trade Marks Act 1999, ss.29, 134, 135; Copyright Act 1957, ss.51, 55",
-        "The sender can sue for an injunction (stopping your use), damages and an account of profits, sometimes with an interim order before you are heard."),
-    NoticeType.employment_dispute: LegalNote(
-        "An employee's claim (wages, dues, gratuity, termination) is usually decided by a labour authority or court. Keep the appointment letter, attendance, "
-        "salary records and the termination papers ready.",
-        "Industrial Disputes Act 1947 / Industrial Relations Code 2020; Payment of Gratuity Act 1972; Payment of Wages Act 1936 / Code on Wages 2019",
-        "The employee can raise a dispute before the labour authority or file a claim, and the dues can grow with interest."),
-    NoticeType.tenancy_notice: LegalNote(
-        "A landlord can end a monthly tenancy with a 15-day notice, but a tenant cannot be thrown out without a court order. Rent-control laws of your state may "
-        "give extra protection. Keep rent receipts and the rent agreement ready.",
-        "Transfer of Property Act 1882, ss.106, 111; the state Rent Control Act",
-        "The landlord can file an eviction suit and claim arrears of rent with interest."),
-    NoticeType.court_summons: LegalNote(
-        "A summons orders you to appear (yourself or through a lawyer) on the date it states. Engage a lawyer straight away: in a civil suit your written statement "
-        "is generally due within 30 days of service, and a missed date can end in a one-sided order.",
-        "Code of Civil Procedure 1908, Order V and Order VIII rule 1",
-        "The court can proceed without you and pass an ex-parte order or decree."),
-    NoticeType.defamation: LegalNote(
-        "A defamation notice says something you said or published harmed the sender's reputation, and usually demands a take-down and an apology. "
-        "Do not repeat the statement and do not delete evidence before a lawyer has seen it.",
-        "Bharatiya Nyaya Sanhita 2023, s.356 (earlier IPC ss.499-500); civil law of defamation",
-        "The sender can file a civil suit for damages and an injunction, and a criminal complaint."),
-    NoticeType.contract_breach: LegalNote(
-        "A breach notice says you did not do what a contract required and asks you to fix it or pay compensation. Check the contract's notice, cure and "
-        "arbitration clauses before replying.",
-        "Indian Contract Act 1872, ss.73, 74; Specific Relief Act 1963; Arbitration and Conciliation Act 1996",
-        "The sender can end the contract, claim damages or the agreed penalty, and start arbitration or a suit."),
-}
+LEGAL_NOTES = {t: LegalNote(r.meaning, r.ref, r.if_ignored) for t, r in CATALOG.items()}
+
+UNVERIFIED_NOTE = "The AI read this deadline from the notice but we could not match the wording. Please check the notice itself."
+_RANK = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+_BASIS_ORDER = {"stated_date": 0, "stated_period": 1, "hearing": 2, "statutory": 3}
 
 
-@dataclass
-class Deadline:
-    due: Optional[date]
-    source: str                 # stated | statutory_default | unknown
-    days: Optional[int]
-    note: str
-    anchor: Optional[str] = None   # explicit | receipt | notice_date | None - what the date was counted from
+def legal_note(notice_type: NoticeType) -> Optional[LegalNote]:
+    return LEGAL_NOTES.get(notice_type)
+
+
+def safe_type(value: Optional[str]) -> Optional[NoticeType]:
+    """Stored type string -> enum; None for values from an older taxonomy instead of crashing a read."""
+    try:
+        return NoticeType(value) if value else None
+    except ValueError:
+        return None
 
 
 def parse_iso(value: Optional[str]) -> Optional[date]:
@@ -154,71 +64,259 @@ def parse_iso(value: Optional[str]) -> Optional[date]:
         return None
 
 
-def _fmt(d: date) -> str:
+def fmt(d: date) -> str:
     return d.strftime("%d %b %Y").lstrip("0")
 
 
-def compute_deadline(facts: NoticeFacts, received: date) -> Deadline:
+# ---------------------------------------------------------------- date arithmetic
+
+def add_period(start: date, count: int, unit: str) -> date:
+    """Last day of a period counted from `start` (the start day itself excluded, General Clauses Act s.9).
+
+    Working days skip Sundays only: public holidays and second Saturdays can only make the real date later, so the
+    date we show is never later than the true one."""
+    if unit == "months":
+        return start + relativedelta(months=count)
+    if unit == "working_days":
+        d, left = start, count
+        while left:
+            d += timedelta(days=1)
+            if d.weekday() != 6:
+                left -= 1
+        return d
+    return start + timedelta(days=count)
+
+
+def _period_words(count: int, unit: str) -> str:
+    return {"working_days": f"{count} working days", "months": f"{count} month" + ("s" if count != 1 else "")}.get(unit, f"{count} days")
+
+
+# ---------------------------------------------------------------- reconciling the AI's dates with the notice's words
+
+def reconcile_facts(facts: NoticeFacts, notice_text: str, received: date,
+                    deadline_quote_ok: bool, hearing_quote_ok: bool) -> Tuple[NoticeFacts, List[str], bool]:
+    """Re-read the verified quotes deterministically and correct the AI's dates where the notice's own words differ.
+
+    Returns (facts, corrections shown to the user, notice_date_found_in_text)."""
+    upd: dict = {}
+    notes: List[str] = []
+    text_dates = set(dates.find_dates(notice_text))
+
+    nd = parse_iso(facts.notice_date)
+    nd_found = nd is not None and nd in text_dates
+    if nd and not nd_found and _swap(nd) in text_dates:
+        upd["notice_date"], nd_found = _swap(nd).isoformat(), True
+        notes.append(f"Notice date read from the notice as {fmt(_swap(nd))} (day first).")
+        nd = _swap(nd)
+    ref = nd or received
+
+    if deadline_quote_ok and facts.deadline_quote:
+        q = facts.deadline_quote
+        period, anchor = dates.find_period(q), dates.period_anchor(q)
+        if period:
+            if facts.response_days != period.count or (facts.response_period_unit or "days") != period.unit:
+                notes.append(f"Period taken from the notice's words: {_period_words(period.count, period.unit)}.")
+            upd.update(response_days=period.count, response_period_unit=period.unit)
+            if anchor and facts.response_days_from != anchor:
+                upd["response_days_from"] = anchor
+        quoted = dates.find_dates(q, ref)
+        model_dt = parse_iso(facts.response_deadline_date)
+        fixed, why = _quoted_deadline_date(model_dt, quoted, set(dates.find_dates(notice_text, ref)), nd)
+        if fixed != model_dt:
+            upd["response_deadline_date"] = fixed.isoformat() if fixed else None
+            notes.append(why)
+        if not period and not quoted and dates.says_forthwith(q):
+            upd["forthwith"] = True
+
+    if hearing_quote_ok and facts.hearing_quote:
+        quoted = dates.find_dates(facts.hearing_quote, ref)
+        model_dt = parse_iso(facts.hearing_date)
+        if quoted and model_dt not in quoted:
+            later = [d for d in quoted if d >= ref] or quoted
+            upd["hearing_date"] = later[-1].isoformat()
+            notes.append(f"Hearing date read from the notice's words as {fmt(later[-1])}.")
+    return (facts.model_copy(update=upd) if upd else facts), notes, nd_found
+
+
+def _quoted_deadline_date(model_dt: Optional[date], quoted: List[date], text_dates: set,
+                          notice_dt: Optional[date]) -> Tuple[Optional[date], str]:
+    """The deadline date the verified quote supports. A date in the quote that is not after the notice date is
+    the notice's own date ("notice dated 12.10.2026, pay within 15 days"), never a deadline."""
+    if model_dt is not None and (model_dt in quoted or model_dt in text_dates):
+        return model_dt, ""
+    future = [d for d in quoted if notice_dt is None or d > notice_dt]
+    if future:
+        best = max(future)
+        return best, f"Deadline date read from the notice's words as {fmt(best)}" + (f" (the AI had {fmt(model_dt)})." if model_dt else ".")
+    if model_dt is not None:
+        return None, f"The AI's deadline date {fmt(model_dt)} does not appear in the notice, so it is not used."
+    return None, ""
+
+
+def _swap(d: date) -> Optional[date]:
+    try:
+        return date(d.year, d.day, d.month) if d.day <= 12 else None
+    except ValueError:
+        return None
+
+
+# ---------------------------------------------------------------- deadline
+
+@dataclass(frozen=True)
+class Candidate:
+    due: date
+    basis: str            # stated_date | stated_period | hearing | statutory
+    anchor: str           # explicit | receipt | notice_date | hearing
+    verified: bool
+    explanation: str
+    citation: Optional[str] = None
+
+    def as_dict(self) -> dict:
+        return {"due": self.due.isoformat(), "basis": self.basis, "anchor": self.anchor, "verified": self.verified,
+                "explanation": self.explanation, "citation": self.citation}
+
+
+@dataclass
+class Deadline:
+    due: Optional[date]
+    source: str                    # stated | statutory_default | unknown
+    days: Optional[int]
+    note: str
+    anchor: Optional[str] = None   # explicit | receipt | notice_date | hearing | None
+    verified: bool = False         # the chosen date is backed by a matched quote or a statute
+    candidates: List[Candidate] = field(default_factory=list)
+    needs: List[str] = field(default_factory=list)     # inputs to ask the user for: "notice_date"
+    forthwith: bool = False
+
+
+def _period_candidate(facts: NoticeFacts, received: date, notice_dt: Optional[date], verified: bool,
+                      needs: List[str]) -> Optional[Candidate]:
+    n, unit = facts.response_days, facts.response_period_unit or "days"
+    words = _period_words(n, unit)
+    if facts.response_days_from == "notice_date":
+        if not notice_dt:
+            needs.append("notice_date")
+            return None
+        return Candidate(add_period(notice_dt, n, unit), "stated_period", "notice_date", verified,
+                         f"The notice gives {words} from its own date ({fmt(notice_dt)}).")
+    if facts.response_days_from is None and notice_dt and notice_dt < received:
+        return Candidate(add_period(notice_dt, n, unit), "stated_period", "notice_date", verified,
+                         f"The notice gives {words} without saying from when; counted from the date of the notice "
+                         f"({fmt(notice_dt)}), the earlier and safer reading.")
+    return Candidate(add_period(received, n, unit), "stated_period", "receipt", verified,
+                     f"The notice gives {words}. Counted from the day you received it ({fmt(received)}).")
+
+
+def _statutory_candidate(w: StatutoryWindow, received: date, notice_dt: Optional[date], needs: List[str]) -> Optional[Candidate]:
+    start = received if w.anchor == "receipt" else notice_dt
+    if start is None:
+        needs.append("notice_date")
+        return None
+    when = f"the day you received it ({fmt(received)})" if w.anchor == "receipt" else f"the date of the notice ({fmt(start)})"
+    return Candidate(add_period(start, w.count, w.unit), "statutory", w.anchor, True,
+                     f"{w.note} Counted from {when} ({w.citation}).", w.citation)
+
+
+def candidates_for(facts: NoticeFacts, received: date, deadline_verified: bool = True,
+                   hearing_verified: bool = True) -> Tuple[List[Candidate], List[str]]:
+    needs: List[str] = []
+    out: List[Candidate] = []
+    notice_dt = parse_iso(facts.notice_date)
     stated = parse_iso(facts.response_deadline_date)
     if stated:
-        return Deadline(stated, "stated", (stated - received).days, "The notice states this date.", "explicit")
+        out.append(Candidate(stated, "stated_date", "explicit", deadline_verified, f"The notice states {fmt(stated)}."))
     if facts.response_days:
-        n = facts.response_days
-        notice_dt = parse_iso(facts.notice_date)
-        if facts.response_days_from == "notice_date" and notice_dt:
-            return Deadline(notice_dt + timedelta(days=n), "stated", n,
-                            f"The notice gives {n} days from its own date ({_fmt(notice_dt)}).", "notice_date")
-        return Deadline(received + timedelta(days=n), "stated", n,
-                        f"The notice gives {n} days. Counted from the day you received it ({_fmt(received)}).", "receipt")
-    window = STATUTORY_WINDOWS.get(facts.notice_type)
-    if window:
-        return Deadline(received + timedelta(days=window.days), "statutory_default", window.days,
-                        f"The notice does not state a period. {window.note} Counted from the day you received it ({_fmt(received)}) "
-                        f"({window.citation}). Confirm with a lawyer.", "receipt")
-    return Deadline(None, "unknown", None, "The notice does not state a deadline and no standard window applies. Check the notice itself or ask a lawyer.")
+        c = _period_candidate(facts, received, notice_dt, deadline_verified, needs)
+        if c:
+            out.append(c)
+    hearing = parse_iso(facts.hearing_date)
+    if hearing:
+        out.append(Candidate(hearing, "hearing", "hearing", hearing_verified,
+                             f"The notice fixes {fmt(hearing)} for a hearing / appearance; any written reply should be in before it."))
+    rule = CATALOG.get(facts.notice_type)
+    if rule and rule.window:
+        c = _statutory_candidate(rule.window, received, notice_dt, needs)
+        if c:
+            out.append(c)
+    return out, sorted(set(needs))
 
 
-def flag_unverified(dl: Deadline) -> Deadline:
-    """A deadline the AI says is stated, but whose wording we cannot find in the text, must not read as fact."""
-    if dl.source == "stated":
-        return Deadline(dl.due, "stated", dl.days,
-                        "The AI read this deadline from the notice but we could not match the wording. Please check the notice itself.", dl.anchor)
-    return dl
+def compute_deadline(facts: NoticeFacts, received: date, deadline_verified: bool = True,
+                     hearing_verified: bool = True) -> Deadline:
+    cands, needs = candidates_for(facts, received, deadline_verified, hearing_verified)
+    ask = (" The notice gives a period from its own date, but that date could not be read: enter the notice date to include it."
+           if "notice_date" in needs else "")
+    if not cands:
+        if facts.forthwith:
+            note = ("The notice demands action 'forthwith' (immediately) and gives no date or period. Treat it as due now: "
+                    "respond within days, not weeks.")
+        else:
+            note = "The notice does not state a deadline and no standard window applies. Check the notice itself or ask a lawyer."
+        return Deadline(None, "unknown", None, note + ask, None, False, [], needs, facts.forthwith)
+
+    chosen = min(cands, key=lambda c: (c.due, _BASIS_ORDER[c.basis]))
+    base = {"receipt": received, "notice_date": parse_iso(facts.notice_date)}.get(chosen.anchor) or received
+    note = chosen.explanation
+    if chosen.basis == "statutory":
+        note = ("The notice does not state an earlier date. " if not any(c.basis != "statutory" for c in cands) else "") + note
+        note += " Confirm with a lawyer."
+    elif not chosen.verified:
+        note += " " + UNVERIFIED_NOTE
+    others = [c for c in cands if c is not chosen]
+    if others:
+        note += " This is the earliest of the dates that apply; also considered: " + "; ".join(
+            f"{fmt(c.due)} ({_BASIS_LABEL[c.basis]})" for c in others) + "."
+    return Deadline(chosen.due, "statutory_default" if chosen.basis == "statutory" else "stated", (chosen.due - base).days,
+                    note + ask, chosen.anchor, chosen.verified, cands, needs, facts.forthwith)
+
+
+_BASIS_LABEL = {"stated_date": "date in the notice", "stated_period": "period in the notice",
+                "hearing": "hearing date", "statutory": "statutory window"}
 
 
 def deadline_rule(notice_type: Optional[str], source: Optional[str]) -> Optional[str]:
     """Citation for a statutory-default deadline (shown as the 'source' of the date)."""
-    if source != "statutory_default" or not notice_type:
+    t = safe_type(notice_type)
+    if source != "statutory_default" or t is None:
         return None
-    try:
-        w = STATUTORY_WINDOWS.get(NoticeType(notice_type))
-    except ValueError:
-        return None
+    w = STATUTORY_WINDOWS.get(t)
     return w.citation if w else None
-
-
-def depends_on_received_date(dl: Deadline) -> bool:
-    return dl.anchor == "receipt"
 
 
 def urgency_for(facts: NoticeFacts, deadline: Deadline, today: date) -> str:
     """critical | high | medium | low - explainable, not an AI opinion."""
-    if facts.notice_type in (NoticeType.court_summons, NoticeType.cheque_bounce):
-        floor = "critical"
-    else:
-        floor = "low"
-    rank = {"low": 0, "medium": 1, "high": 2, "critical": 3}
-    level = floor
+    rule: Optional[NoticeRule] = CATALOG.get(facts.notice_type)
+    level = rule.urgency_floor if rule else "low"
+
+    def at_least(lvl: str) -> None:
+        nonlocal level
+        if _RANK[lvl] > _RANK[level]:
+            level = lvl
+
     if deadline.due is not None:
         days = (deadline.due - today).days
-        by_days = "critical" if days <= 3 else "high" if days <= 7 else "medium" if days <= 21 else "low"
-        level = by_days if rank[by_days] > rank[level] else level
-    elif floor == "low":
-        level = "medium"                                    # unknown deadline: treat as needing attention
-    if facts.amount_claimed and facts.amount_claimed >= 500_000 and rank[level] < rank["high"]:
-        level = "high"                                      # large sums deserve a lawyer's eye
+        at_least("critical" if days <= 3 else "high" if days <= 7 else "medium" if days <= 21 else "low")
+    else:
+        at_least("medium")                                  # unknown deadline: needs attention
+    if facts.forthwith:
+        at_least("high")
+    if facts.amount_claimed and facts.amount_claimed >= 500_000:
+        at_least("high")                                    # large sums deserve a lawyer's eye
     return level
 
 
-def legal_note(notice_type: NoticeType) -> Optional[LegalNote]:
-    return LEGAL_NOTES.get(notice_type)
+def type_info(notice_type: Optional[str]) -> Optional[dict]:
+    """Everything the UI shows about the kind of notice, from the catalog (no AI)."""
+    t = safe_type(notice_type)
+    if t is None:
+        return None
+    r = rule_for(t)
+    w = r.window
+    return {
+        "label": r.label, "family": r.family, "meaning": r.meaning, "if_ignored": r.if_ignored, "ref": r.ref,
+        "documents": list(r.documents), "handler": r.handler, "handler_label": HANDLER_LABELS[r.handler],
+        "response": r.response, "channel": r.channel, "verified": r.verified, "verify_note": r.verify_note or None,
+        "statutory_window": ({"count": w.count, "unit": w.unit, "anchor": w.anchor, "citation": w.citation, "note": w.note,
+                              "purpose": w.purpose} if w else None),
+    }
+

@@ -28,12 +28,26 @@ class Settings(BaseSettings):
     # Comma-separated models tried in order when the primary model is out of quota / unavailable.
     # Each model has its own daily free-tier quota. (gemini-2.5-flash-lite is retired for new keys.)
     gemini_fallback_models: str = Field(default="gemini-3.5-flash-lite,gemini-3.5-flash")
-    llm_timeout_seconds: int = Field(default=120)
+    llm_timeout_seconds: int = Field(default=120)           # one HTTP request to the model
+    llm_total_timeout_seconds: int = Field(default=420)     # whole call incl. retries, key rotation and fallbacks
     llm_max_retries: int = Field(default=4)
     llm_max_concurrency: int = Field(default=3)
     llm_requests_per_minute: int = Field(default=10)
     llm_cache_enabled: bool = Field(default=True)
     llm_cache_dir: str = Field(default="./storage/llm_cache")
+    llm_cache_max_mb: int = Field(default=200)              # LRU eviction keeps the cache under this size ...
+    llm_cache_max_entries: int = Field(default=5000)        # ... and this many entries
+
+    # Background jobs (app/shared/jobs.py)
+    jobs_max_concurrency: int = Field(default=2)
+
+    # Uploads (app/shared/storage/file_storage.py)
+    upload_max_mb: int = Field(default=25)
+    upload_dir: str = Field(default="./uploads")
+
+    # Logging: "text" (default) or "json" (one object per line, for log shippers)
+    log_format: str = Field(default="text")
+    log_level: str = Field(default="INFO")
 
     # Vector collection used by the Documents workspace (tests use a separate one)
     documents_collection: str = Field(default="documents_v2")
@@ -67,6 +81,11 @@ class Settings(BaseSettings):
     gst_api_secret: Optional[str] = Field(default=None)
     gst_api_base_url: Optional[str] = Field(default=None)
     gst_api_key_header: Optional[str] = Field(default=None)   # "generic" only; default x-api-key
+    # Each live lookup can cost money, so results are kept for this long per GSTIN (persisted on disk).
+    registry_cache_ttl_hours: int = Field(default=24)
+    registry_cache_dir: str = Field(default="./storage/registry_cache")
+    # Most paid lookups one "re-check all suppliers" call may make; the rest are reported as deferred.
+    registry_recheck_max_live: int = Field(default=50)
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"

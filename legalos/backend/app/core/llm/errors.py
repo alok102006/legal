@@ -25,9 +25,15 @@ class LLMAuthError(LLMError):
 
 
 class LLMQuotaError(LLMError):
-    """Rate limit or quota exhausted."""
+    """Rate limit or quota exhausted.
+
+    `retry_after`: seconds the server asked us to wait (None when it gave no hint).
+    `daily`: the daily free-tier quota is gone; waiting minutes will not help, so job runners must not retry.
+    """
 
     retryable = True
+    retry_after: float | None = None
+    daily: bool = False
     user_message = "The AI service is busy or its quota is used up. Please retry in a few minutes."
 
 
@@ -35,6 +41,7 @@ class LLMUnavailable(LLMError):
     """Timeouts, 5xx, connection problems."""
 
     retryable = True
+    retry_after: float | None = None
     user_message = "The AI service is temporarily unavailable. Please retry."
 
 
@@ -49,3 +56,5 @@ class LLMInvalidOutput(LLMError):
 
     retryable = True
     user_message = "The AI returned an unreadable answer. Please retry."
+    # First characters of what the model actually said (for logs and support; never shown to end users).
+    raw_excerpt: str = ''

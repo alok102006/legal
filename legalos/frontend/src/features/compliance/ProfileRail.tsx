@@ -117,7 +117,7 @@ export const ProfileRail: React.FC<{
           {editing ? 'Done' : 'Edit profile'}
         </Button>
       </div>
-      {editing && <p className="mt-3 rounded-lg bg-primary-soft px-3 py-2 text-xs text-primary-ink">Change a fact and your calendar updates straight away. Filings you already marked as done are kept.</p>}
+      {editing && <p className="mt-3 rounded-xl bg-surface-2 px-3 py-2 text-xs text-ink-2">Change a fact and your calendar updates straight away. Filings you already marked as done are kept.</p>}
 
       <ul className="mt-4 divide-y divide-line">
         {d.facts.map((f) => (

@@ -6,7 +6,7 @@ from app.core.llm.errors import LLMUnavailable
 from app.core.rag.parsing import Page, ParsedDocument, parse_text_bytes
 from app.workspaces.contract_intelligence.engine import pipeline, rules, scoring, verify
 from app.workspaces.contract_intelligence.engine.schemas import (
-    ContractFacts, ContractType, FindingCategory, RiskAnalysis, Severity,
+    ChecklistSweep, ContractFacts, ContractType, RiskAnalysis, Severity,
 )
 from app.workspaces.contract_intelligence.engine.segmenter import render_for_llm, segment_contract
 
@@ -70,6 +70,17 @@ def test_quote_verification_exact_fuzzy_and_fabricated():
     assert not fake.verified
 
 
+def test_hindi_quotes_keep_vowel_signs_so_invented_sentences_do_not_verify():
+    doc = ParsedDocument(pages=[Page(1, "धारा 1 भुगतान\nक्रेता चालान की तारीख से तीस दिनों के भीतर पूरा भुगतान करेगा और देरी पर ब्याज देगा।")],
+                         kind="text", has_pages=False)
+    segs = segment_contract(doc)
+    real = verify.find_quote("क्रेता चालान की तारीख से तीस दिनों के भीतर पूरा भुगतान करेगा", segs)
+    assert real.verified and real.exact
+    invented = verify.find_quote("केता चालन का तरीख से तीन दिनो के बाहर पूरी भगतान करेगी और देरी पर ब्याज लेगा", segs)
+    assert not invented.verified
+    assert "ि" in verify.normalize("तारीख की स्थिति") and "्" in verify.normalize("स्थिति")
+
+
 def test_quote_hint_prefers_given_segment():
     segs = segment_contract(_doc(SUPPLY_AGREEMENT))
     m = verify.find_quote("any amendment must be in writing and signed by both parties", segs, hint_segment_id="S99")
@@ -87,18 +98,24 @@ def _facts(**kw) -> ContractFacts:
     return ContractFacts(**base)
 
 
-def _ids(facts, org=None):
-    return {r.rule_id for r in rules.run_rules(facts, org, [])}
+def _ids(facts, org=None, text=""):
+    segs = segment_contract(_doc(text)) if text else []
+    return {r.rule_id for r in rules.run_rules(facts, org, segs)}
 
 
 def test_msme_rule_fires_for_buyer_over_45_days():
-    assert "IN-MSME-45-BUYER" in _ids(_facts(payment_days=60))
-    assert "IN-MSME-45-BUYER" not in _ids(_facts(payment_days=30))
-    assert "IN-MSME-45-BUYER" not in _ids(_facts(payment_days=None))
+    assert "IN-MSME-45-BUYER" in _ids(_facts(payment_days=60), text=SUPPLY_AGREEMENT)
+    assert "IN-MSME-45-BUYER" not in _ids(_facts(payment_days=30), text=SUPPLY_AGREEMENT)
+    assert "IN-MSME-45-BUYER" not in _ids(_facts(payment_days=None), text=SUPPLY_AGREEMENT)
+
+
+def test_fact_based_rule_needs_the_clause_in_the_text():
+    # the model says 60 days, but no clause states it: a deterministic rule must not fire on a hunch
+    assert "IN-MSME-45-BUYER" not in _ids(_facts(payment_days=60), text=BALANCED_AGREEMENT)
 
 
 def test_msme_rule_not_for_non_supply_contracts():
-    assert "IN-MSME-45-BUYER" not in _ids(_facts(payment_days=90, contract_type=ContractType.lease))
+    assert "IN-MSME-45-BUYER" not in _ids(_facts(payment_days=60, contract_type=ContractType.lease), text=SUPPLY_AGREEMENT)
 
 
 def test_msme_seller_rule_uses_org_profile():
@@ -106,16 +123,17 @@ def test_msme_seller_rule_uses_org_profile():
         payment_days=90,
         parties=[{"name": "Small Co", "role": "Supplier", "is_our_client": True}, {"name": "Big Co", "role": "Buyer"}],
     )
-    assert "IN-MSME-45-SELLER" in _ids(facts, rules.OrgProfile(msme_category="small"))
-    assert "IN-MSME-45-SELLER" not in _ids(facts, rules.OrgProfile(msme_category="none"))
-    assert "IN-MSME-45-SELLER" not in _ids(facts, None)
+    text = "1. PAYMENT\nThe Buyer shall pay each invoice within ninety (90) days of receipt of the goods."
+    assert "IN-MSME-45-SELLER" in _ids(facts, rules.OrgProfile(msme_category="small"), text)
+    assert "IN-MSME-45-SELLER" not in _ids(facts, rules.OrgProfile(msme_category="none"), text)
+    assert "IN-MSME-45-SELLER" not in _ids(facts, None, text)
 
 
 def test_structural_rules():
     ids = _ids(_facts(
         liability_cap_present=False, auto_renewal=True, renewal_notice_days=90,
         governing_law="Laws of Singapore", termination_notice_days_other=15, stamp_duty_mentioned=False,
-    ))
+    ), text=SUPPLY_AGREEMENT)
     assert {"IN-LIAB-NOCAP", "IN-AUTORENEW", "IN-FOREIGN-LAW", "IN-TERM-ONESIDED", "IN-STAMP"} <= ids
 
 
@@ -184,6 +202,8 @@ def _handler(call):
                 {"category": "force_majeure", "title": "No force majeure clause", "why_it_matters": "No relief for events beyond control."}
             ],
         })
+    if call.schema is ChecklistSweep:
+        return json.dumps({"items": []})
     raise AssertionError("unexpected schema")
 
 
@@ -220,7 +240,7 @@ def test_rule_and_ai_finding_about_the_same_issue_are_merged_not_double_counted(
     assert len(liability) == 1                               # AI "unlimited indemnity" + rule "no cap" -> one finding
     f = liability[0]
     assert f.source == "ai" and f.rule_id == "IN-LIAB-NOCAP" and f.legal_ref and f.severity == "critical"
-    assert res.score.by_category["liability_indemnity"] == 30    # counted once
+    assert res.score.by_category["liability_indemnity"] == 35    # counted once (one critical)
 
 
 def test_pipeline_propagates_llm_failure(fake_llm):

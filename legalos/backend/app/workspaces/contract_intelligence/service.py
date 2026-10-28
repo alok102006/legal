@@ -6,6 +6,7 @@ Failures are never converted into "safe" results: a contract that cannot be anal
 import asyncio
 import logging
 import os
+import re
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional, Tuple
@@ -22,15 +23,18 @@ from app.shared.db.session import async_session_maker
 from app.shared.exceptions import BadRequestException, NotFoundException
 from app.shared.storage import file_storage
 from app.workspaces.contract_intelligence import repository
-from app.workspaces.contract_intelligence.engine import pipeline, prompts, rules, verify
+from app.workspaces.contract_intelligence.engine import inputs, pipeline, prompts, rules, verify
+from app.workspaces.contract_intelligence.engine.contract_types import profile
 from app.workspaces.contract_intelligence.engine.schemas import ChatAnswer
 from app.workspaces.contract_intelligence.engine.segmenter import Segment as EngineSegment
-from app.workspaces.contract_intelligence.engine.segmenter import limit_for_llm, render_for_llm
+from app.workspaces.contract_intelligence.engine.segmenter import render_for_llm
 from app.workspaces.contract_intelligence.models import ChatMessage, Contract, Finding, Segment
 
 logger = logging.getLogger("legalos.contracts")
 
 MAX_FILE_SIZE = 10 * 1024 * 1024
+MAX_COMBINED_SIZE = 25 * 1024 * 1024          # PDF assembled from several photos
+CHAT_TOP_FINDINGS = 8
 ALLOWED_EXTENSIONS = {"pdf", "docx", "txt", "md", "png", "jpg", "jpeg", "webp"}
 _IMAGE_MAGIC = {"png": (b"\x89PNG",), "jpg": (b"\xff\xd8\xff",), "jpeg": (b"\xff\xd8\xff",), "webp": (b"RIFF",)}
 
@@ -88,6 +92,19 @@ def _to_engine_segments(rows: List[Segment]) -> List[EngineSegment]:
 
 # ------------------------------------------------------------------ upload / list / detail
 
+async def combine_photos(uploads: List[Tuple[str, bytes]]) -> Tuple[str, bytes]:
+    """Several photos of one contract (in upload order) -> one image-only PDF that goes through page-wise OCR."""
+    for name, data in uploads:
+        if validate_upload(name, data) not in pipeline.IMAGE_TYPES:
+            raise BadRequestException("To upload several files at once, every file must be a photo (JPG, PNG or WebP) "
+                                      "of one contract's pages, in order. Upload PDFs and Word files one at a time.")
+    pdf = await asyncio.to_thread(inputs.photos_to_pdf, [d for _, d in uploads])
+    if len(pdf) > MAX_COMBINED_SIZE:
+        raise BadRequestException("These photos are too large together. Please upload fewer pages or a PDF scan.")
+    stem = os.path.splitext(os.path.basename(uploads[0][0]))[0] or "contract"
+    return f"{stem} ({len(uploads)} pages).pdf", pdf
+
+
 async def create_upload(
     session: AsyncSession, ctx: RequestContext, file_bytes: bytes, filename: str, client_party: Optional[str],
 ) -> Contract:
@@ -122,6 +139,7 @@ async def get_detail(session: AsyncSession, ctx: RequestContext, contract_id: uu
             counts[f.severity] += 1
     return {
         "id": c.id, "title": c.title, "counterparty_name": c.counterparty_name, "contract_type": c.contract_type,
+        "contract_type_label": profile(c.contract_type).label if c.contract_type else None,
         "status": c.status, "stage": c.stage, "risk_level": c.risk_level, "overall_score": c.overall_score,
         "finding_counts": counts, "error_kind": c.error_kind, "error_message": c.error_message,
         "filename": c.document.original_filename if c.document else None,
@@ -186,12 +204,13 @@ async def run_analysis(contract_id: uuid.UUID) -> None:
             contract.risk_level = result.score.level
             cov = result.coverage
             contract.score_breakdown = {
-                "by_category": result.score.by_category, "top_drivers": result.score.top_drivers,
+                **result.score.breakdown(),
                 "coverage": {
                     "truncated": bool(cov and cov.truncated), "reviewed_segments": cov.reviewed_segments if cov else None,
                     "total_segments": cov.total_segments if cov else None, "reviewed_pages": cov.reviewed_pages if cov else None,
-                    "total_pages": cov.total_pages if cov else None,
+                    "total_pages": cov.total_pages if cov else None, "parts": cov.parts if cov else None,
                 },
+                "review": result.review,
             }
             contract.warnings = result.warnings
             contract.page_count = result.page_count or None
@@ -309,6 +328,85 @@ async def prepare_retry(session: AsyncSession, ctx: RequestContext, contract_id:
 
 # ------------------------------------------------------------------ chat
 
+_DEVANAGARI = re.compile(r"[ऀ-ॿ]")
+_ENFORCE = re.compile(r"enforc|\bvalid|\blegal|binding|court|\bvoid|allowed|lawful|stand up|वैध|कानून|लागू|मान्य|अदालत|न्यायालय", re.I)
+_NEGOTIATE = re.compile(r"negotiat|push back|ask for|priorit|\bfirst\b|biggest|worst|main risk|top risk|most important|"
+                        r"बातचीत|सबसे|पहले|मुख्य जोखिम", re.I)
+_CATEGORY_WORDS = {
+    "non_compete": r"compet|restrain|प्रतिस्पर्धा", "penalty_damages": r"penalt|liquidated|damages|जुर्माना|हर्जाना",
+    "payment_terms": r"interest|payment|deposit|escalat|rent|ब्याज|भुगतान|जमा", "termination": r"terminat|notice|exit|समाप्त",
+    "dispute_resolution": r"arbitrat|court|jurisdiction|dispute|मध्यस्थ|अदालत|विवाद",
+    "lock_in_exclusivity": r"lock|exclusiv", "liability_indemnity": r"guarant|indemn|liab|cheque|गारंटी|चेक",
+    "assignment_subcontract": r"assign|transfer", "unilateral_change": r"price|change|revise|amend",
+    "stamp_execution": r"stamp|regist|स्टाम्प", "other": r"certificate|original|document",
+}
+_SEV = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+_STOP = {"the", "and", "for", "what", "this", "that", "with", "can", "does", "are", "contract", "agreement", "how", "who"}
+
+
+def rank_findings(rows: List[Finding]) -> List[Finding]:
+    """Evidence-backed, open findings, most important first - the order to negotiate in."""
+    live = [f for f in rows if f.counts_toward_score and f.status != "dismissed" and f.source != "missing"]
+    return sorted(live, key=lambda f: (_SEV.get(f.severity, 9), f.sort_order))[:CHAT_TOP_FINDINGS]
+
+
+def findings_block(ranked: List[Finding]) -> str:
+    if not ranked:
+        return "(no evidence-backed findings)"
+    lines = []
+    for i, f in enumerate(ranked, 1):
+        where = ", ".join(x for x in (f.segment_id, f"p.{f.page}" if f.page else None) if x)
+        quote = f' - quote: "{f.quote[:160]}"' if f.quote else ""
+        legal = f" - legal note: {f.legal_note} ({f.legal_ref})" if f.legal_ref else ""
+        lines.append(f"{i}. [{f.severity.upper()}] {f.title} ({where or 'whole contract'}){quote}{legal}")
+    return "\n".join(lines)
+
+
+def select_for_question(segs: List[EngineSegment], question: str, priority: set, budget: int) -> Tuple[List[EngineSegment], bool]:
+    """Whole contract when it fits; otherwise the sections most relevant to the question (word overlap, plus the
+    clauses behind the top findings), in document order - one call, nothing silently cut from the middle."""
+    cost = [len(s.text) + len(s.heading) + 40 for s in segs]
+    if sum(cost) <= budget:
+        return segs, False
+    words = {w for w in re.findall(r"\w{3,}", question.lower()) if w not in _STOP}
+    score = [sum(w in s.text.lower() for w in words) + (2 if s.id in priority else 0) for s in segs]
+    keep, used = set(), 0
+    for i in sorted(range(len(segs)), key=lambda i: -score[i]):
+        if used + cost[i] <= budget:
+            keep.add(i)
+            used += cost[i]
+    return [s for i, s in enumerate(segs) if i in keep], True
+
+
+def with_top_findings(citations: List[dict], ranked: List[Finding], top: int = 3) -> List[dict]:
+    """'What should I negotiate first?' must cite the top findings in order, whatever the model chose to quote."""
+    cited = {c["segment_id"] for c in citations}
+    for f in ranked[:top]:
+        if f.quote and f.verified and f.segment_id not in cited:
+            citations.append({"quote": f.quote, "segment_id": f.segment_id, "page": f.page, "verified": True,
+                              "finding": f.title, "legal_ref": f.legal_ref})
+            cited.add(f.segment_id)
+    return citations[:6]
+
+
+def relevant_notes(ranked: List[Finding], citations: List[dict], question: str) -> List[Finding]:
+    """Findings whose legal note answers an enforceability question: cited clause or matching topic."""
+    cited = {c["segment_id"] for c in citations if c.get("segment_id")}
+    out, refs = [], set()
+    for f in ranked:
+        topical = re.search(_CATEGORY_WORDS.get(f.category, r"$^"), question, re.I)
+        if f.legal_ref and f.legal_ref not in refs and (f.segment_id in cited or topical):
+            out.append(f)
+            refs.add(f.legal_ref)
+    return out[:2]
+
+
+def legal_notes_text(notes: List[Finding], hindi: bool) -> str:
+    head = ("कानूनी नोट (सामान्य जानकारी; भरोसा करने से पहले वकील से पुष्टि करें)" if hindi
+            else "Legal note (general information; verify with a lawyer before relying)")
+    return "".join(f"\n\n{head}: {f.legal_note} ({f.legal_ref})" for f in notes)
+
+
 async def list_messages(session: AsyncSession, ctx: RequestContext, contract_id: uuid.UUID) -> List[ChatMessage]:
     c = await repository.get_contract(session, ctx.organization_id, contract_id)
     if not c:
@@ -323,30 +421,41 @@ async def ask(session: AsyncSession, ctx: RequestContext, contract_id: uuid.UUID
     if c.status != "analyzed":
         raise BadRequestException("This contract has not been analysed yet.")
 
+    question = question.strip()
+    ranked = rank_findings(c.findings)
     all_segs = _to_engine_segments(c.segments)
-    segs, cov = limit_for_llm(all_segs, pipeline.MAX_DOC_CHARS)      # same slice the analysis saw
+    segs, selected = select_for_question(all_segs, question, {f.segment_id for f in ranked}, pipeline.MAX_DOC_CHARS)
     history_rows = await repository.recent_messages(session, contract_id, 6)
     history = "\n".join(f"{m.role.upper()}: {m.content}" for m in history_rows) or "(none)"
 
     answer = await llm_client.generate_structured_async(
         prompts.CHAT_USER.format(
-            history=history, question=question.strip(), document=render_for_llm(segs),
-            coverage_note=prompts.coverage_note(cov.truncated, cov.reviewed_segments, cov.total_segments)),
+            history=history, question=question, document=render_for_llm(segs), findings=findings_block(ranked),
+            coverage_note=(f"NOTE: this contract is long; you are shown the {len(segs)} of {len(all_segs)} sections most "
+                           "relevant to the question. If the answer is not in them, say you could not find it.\n")
+            if selected else ""),
         ChatAnswer, system=prompts.CHAT_SYSTEM, workspace="contract_chat", temperature=0.1,
         prompt_version=prompts.PROMPT_VERSION,
     )
 
     citations, verified_any = [], False
     for cit in answer.citations[:5]:
-        m = verify.find_quote(cit.quote, segs, cit.segment_id)
+        m = verify.find_quote(cit.quote, all_segs, cit.segment_id)
         verified_any = verified_any or m.verified
         citations.append({"quote": cit.quote, "segment_id": m.segment_id or cit.segment_id,
                           "page": m.page, "verified": m.verified})
+    hindi = bool(_DEVANAGARI.search(question))
     text = answer.answer.strip()
+    if _NEGOTIATE.search(question):
+        citations = with_top_findings(citations, ranked)
+        verified_any = verified_any or any(ci["verified"] for ci in citations)
+    if _ENFORCE.search(question):
+        text += legal_notes_text(relevant_notes(ranked, citations, question), hindi)
     if answer.found_in_contract and not verified_any:
-        text += "\n\n(Note: I could not match this answer to an exact passage, so please check the contract itself.)"
+        text += ("\n\n(नोट: यह उत्तर अनुबंध के किसी सटीक अंश से मेल नहीं खा सका, कृपया अनुबंध स्वयं देखें।)" if hindi else
+                 "\n\n(Note: I could not match this answer to an exact passage, so please check the contract itself.)")
 
-    session.add(ChatMessage(contract_id=contract_id, role="user", content=question.strip()))
+    session.add(ChatMessage(contract_id=contract_id, role="user", content=question))
     reply = ChatMessage(contract_id=contract_id, role="assistant", content=text,
                         citations=citations, found_in_contract=answer.found_in_contract)
     session.add(reply)

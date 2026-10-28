@@ -34,7 +34,34 @@ export interface ReplyDraft {
   created_at: string;
 }
 
-export interface KeyQuote { kind: 'deadline' | 'amount' | 'demand'; text: string; verified: boolean }
+export interface KeyQuote { kind: 'deadline' | 'hearing' | 'amount' | 'demand'; text: string; verified: boolean }
+
+export interface DeadlineBasis {
+  due: string;
+  basis: 'stated_date' | 'stated_period' | 'hearing' | 'statutory';
+  anchor: string;
+  verified: boolean;
+  explanation: string;
+  citation: string | null;
+}
+
+export interface StatutoryWindow { count: number; unit: string; anchor: string; citation: string; note: string; purpose: string }
+
+export interface TypeInfo {
+  label: string;
+  family: string;
+  meaning: string;
+  if_ignored: string;
+  ref: string;
+  documents: string[];
+  handler: 'owner' | 'ca' | 'lawyer' | 'lawyer_required';
+  handler_label: string;
+  response: 'letter' | 'action_plan';
+  channel: string;
+  verified: boolean;
+  verify_note: string | null;
+  statutory_window: StatutoryWindow | null;
+}
 
 export interface NoticeDetail extends NoticeListItem {
   reference_number: string | null;
@@ -46,10 +73,21 @@ export interface NoticeDetail extends NoticeListItem {
   deadline_quote: string | null;
   deadline_verified: boolean;
   deadline_rule: string | null;
+  deadline_basis: DeadlineBasis[];
+  overdue: boolean;
+  forthwith: boolean;
+  hearing_date: string | null;
+  needs_notice_date: boolean;
+  notice_date_verified: boolean;
+  date_corrections: string[];
   received_confirmed: boolean;
   needs_received_date: boolean;
   issuer_role: string | null;
   addressed_to: string | null;
+  form_or_section: string | null;
+  language: string | null;
+  summary_local: string[];
+  allegations: string[];
   summary_points: string[];
   demands: string[];
   statutes: string[];
@@ -61,6 +99,12 @@ export interface NoticeDetail extends NoticeListItem {
   actions: string[];
   actions_done: number[];
   key_quotes: KeyQuote[];
+  type_info: TypeInfo | null;
+  draft_kind: 'letter' | 'action_plan';
+  lawyer_required: boolean;
+  lawyer_brief: string | null;
+  input_cleaned: boolean;
+  pages: number;
   ocr_used: boolean;
   in_calendar: boolean;
   raw_text: string | null;
@@ -92,9 +136,11 @@ function useInvalidate() {
 export function useUploadNotice() {
   const inv = useInvalidate();
   return useMutation({
-    mutationFn: async ({ file, receivedDate }: { file: File; receivedDate?: string }) => {
+    mutationFn: async ({ files, receivedDate }: { files: File[]; receivedDate?: string }) => {
       const fd = new FormData();
-      fd.append('file', file);
+      // one document goes as `file`; several page photos go as `files`, in page order
+      if (files.length === 1) fd.append('file', files[0]);
+      else files.forEach((f) => fd.append('files', f));
       if (receivedDate) fd.append('received_date', receivedDate);
       return (await apiClient.post<NoticeListItem>('/api/v1/notices/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } })).data;
     },
@@ -118,7 +164,7 @@ export function useRetryNotice(id: string) {
 export function useUpdateNotice(id: string) {
   const inv = useInvalidate();
   return useMutation({
-    mutationFn: async (b: { received_date?: string; review_status?: string; status?: string; actions_done?: number[] }) => (await apiClient.patch<NoticeDetail>(`/api/v1/notices/${id}`, b)).data,
+    mutationFn: async (b: { received_date?: string; notice_date?: string; review_status?: string; status?: string; actions_done?: number[] }) => (await apiClient.patch<NoticeDetail>(`/api/v1/notices/${id}`, b)).data,
     onSuccess: () => inv(id),
   });
 }

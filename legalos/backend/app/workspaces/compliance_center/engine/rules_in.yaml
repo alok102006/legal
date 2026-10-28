@@ -24,7 +24,10 @@
 #   fixed_list:  explicit dates; year = FY start year + year_offset
 #   once:        a single fixed date
 
-version: "2026-10-27.1"
+# Reviewed 28 Oct 2026 against the statutes and the standing notifications. Section numbers cite the Income-tax Act 1961;
+# the Income-tax Act 2025 (in force from 1 April 2026) re-enacts these provisions under new section numbers, and the due
+# dates below are the long-standing ones, so check any change when you edit this file.
+version: "2026-10-28.1"
 
 # Where each authority's filings are made (shown as a "file it here" link). Keyed by a rule's `authority`.
 portals:
@@ -102,8 +105,8 @@ rules:
     form: GSTR-9
     when: { registration: gst, not_registration: gst_composition, turnover_min_band: "1.5-5cr" }
     schedule: { kind: fixed_list, dates: [ { month: 12, day: 31, year_offset: 1, label: "annual" } ] }
-    penalty: "Late fee of Rs 200 per day (capped) for larger taxpayers."
-    source: "CGST Act 2017 s.44"
+    penalty: "Late fee per day of delay: Rs 50 (turnover up to Rs 5 crore), Rs 100 (Rs 5 to 20 crore) or Rs 200 (above Rs 20 crore), each capped at a small share of turnover."
+    source: "CGST Act 2017 s.44, s.47(2); notification 07/2023-Central Tax"
     confirm_note: "Mandatory when yearly turnover is above Rs 2 crore; optional below that."
     needs_confirmation: true
     description: "Annual summary of all GST returns for the financial year."
@@ -139,8 +142,10 @@ rules:
     form: GSTR-4
     when: { registration: gst_composition }
     schedule: { kind: fixed_list, dates: [ { month: 4, day: 30, year_offset: 1, label: "annual" } ] }
-    penalty: "Late fee under the GST Act for every day of delay."
-    source: "CGST Act 2017 s.10, s.39(2); CGST Rules r.62"
+    penalty: "Late fee under the GST Act for every day of delay (Rs 50 a day, Rs 20 if nil), plus 18% a year interest on any unpaid tax."
+    source: "CGST Act 2017 s.10, s.39(2), s.47; CGST Rules r.62(1) (due 30 April after the financial year)"
+    needs_confirmation: true
+    confirm_note: "30 April is the standard date. The government has often extended it by notification (for example to 30 June for FY 2023-24), so check the current date on the GST portal."
     description: "Yearly return for composition taxpayers, filed after the financial year ends."
 
   # ------------------------------------------------------------------ TDS
@@ -176,6 +181,20 @@ rules:
     late_fee: { per_day: 200, cap_note: "The fee can never be more than the TDS in that return." }
     source: "Income-tax Rules r.31A; Income-tax Act 1961 s.234E"
     description: "Quarterly statement of tax deducted (Form 24Q for salaries, 26Q for other payments)."
+
+  - id: tds-form16
+    title: Form 16 (TDS certificate for salaries)
+    category: tax
+    authority: Income Tax
+    form: Form 16
+    when: { registration: tds }
+    schedule: { kind: fixed_list, dates: [ { month: 6, day: 15, year_offset: 1, label: "annual" } ] }
+    penalty: "Rs 100 for every day the certificate is late, payable by the deductor."
+    late_fee: { per_day: 100, fee_note: "Applies per certificate; there is no upper limit in the section." }
+    source: "Income-tax Act 1961 s.203; Income-tax Rules r.31(3); penalty s.272A(2)(g)"
+    needs_confirmation: true
+    confirm_note: "Only if you deducted tax on salaries (Form 24Q). Issue it to every employee from whom tax was deducted."
+    description: "Give each employee the TDS certificate for the year, 15 days after the Q4 TDS return is due."
 
   # ------------------------------------------------------------------ Labour
   - id: pf-monthly
@@ -230,7 +249,7 @@ rules:
         - { month: 3, day: 15, year_offset: 1, label: "i4", note: "100% cumulative" }
     penalty: "Interest of 1% a month under sections 234B and 234C on any shortfall."
     source: "Income-tax Act 1961 s.208, s.211, s.234B, s.234C"
-    confirm_note: "Applies if your estimated tax for the year is Rs 10,000 or more."
+    confirm_note: "Applies if your estimated tax for the year is Rs 10,000 or more. Businesses on the presumptive scheme (44AD / 44ADA) pay it all in ONE installment by 15 March."
     needs_confirmation: true
     description: "Pay your income tax in installments during the year instead of all at the end."
 
@@ -256,6 +275,7 @@ rules:
     schedule: { kind: fixed_list, dates: [ { month: 10, day: 31, year_offset: 1, label: "annual" } ] }
     penalty: "Late filing fee of up to Rs 5,000 under section 234F, plus interest; some losses cannot be carried forward."
     source: "Income-tax Act 1961 s.139(1), s.234F"
+    confirm_note: "If the company has international or specified domestic transactions (Form 3CEB / transfer pricing), the due date is 30 November."
     description: "Annual income tax return of the company."
 
   - id: itr-firm-audit
@@ -324,6 +344,20 @@ rules:
     needs_confirmation: true
     description: "Annual return with shareholder and director details."
 
+  - id: companies-adt1
+    title: ADT-1 (appointment of auditor)
+    category: corporate
+    authority: MCA
+    form: ADT-1
+    when: { entity_in: [private_limited, public_limited] }
+    schedule: { kind: fixed_list, dates: [ { month: 10, day: 15, year_offset: 1, label: "annual" } ] }
+    penalty: "Additional fee of Rs 100 per day of delay (no cap), plus penalties on the company and its officers."
+    late_fee: { per_day: 100 }
+    source: "Companies Act 2013 s.139(1), s.403; Companies (Audit and Auditors) Rules 2014 r.4(2) (due 15 days after the AGM, assuming an AGM on 30 September)"
+    needs_confirmation: true
+    confirm_note: "Only in the year an auditor is appointed or re-appointed for a new term (normally once every five years). The due date is 15 days after the AGM that makes the appointment."
+    description: "Inform the Registrar of the auditor appointed at the AGM."
+
   - id: companies-dpt3
     title: DPT-3 (return of deposits)
     category: corporate
@@ -347,7 +381,7 @@ rules:
         - { month: 10, day: 31, year_offset: 0, label: "h1", note: "April to September" }
         - { month: 4, day: 30, year_offset: 1, label: "h2", note: "October to March" }
     penalty: "Fine and penalties on the company and officers under the Companies Act."
-    source: "MCA order on specified companies (Form MSME-1); MSMED Act 2006 s.15"
+    source: "Companies Act 2013 s.405; MCA order dated 22 January 2019 (Form MSME-1); MSMED Act 2006 s.15"
     confirm_note: "Only if you owe a micro or small supplier money for more than 45 days. File a half-yearly return then."
     needs_confirmation: true
     description: "Half-yearly report of payments pending to MSME suppliers beyond 45 days."
@@ -409,10 +443,11 @@ rules:
 
 # Things the app does not schedule yet (shown to the user honestly, not silently skipped)
 not_covered:
-  - { title: "Professional Tax in states other than Karnataka", reason: "Due dates differ by state; state schedules are being verified before we add them." }
-  - { title: "Shops and Establishment licence renewal", reason: "State-specific; add as a custom reminder for now." }
+  - { title: "Professional Tax in Maharashtra, West Bengal, Gujarat, Tamil Nadu and Telangana", reason: "Due dates depend on the number of employees and on monthly, quarterly or yearly payment under each state's Act, and we have not been able to confirm them against the state notifications. Add a custom reminder with the date on your registration certificate." }
+  - { title: "Professional Tax in other states", reason: "Due dates differ by state and are not verified yet." }
+  - { title: "Shops and Establishment licence renewal (unverified)", reason: "Renewal dates and frequency differ by state and by the licence you hold; they are not verified, so none is scheduled. Add a custom reminder from your licence." }
   - { title: "Labour Welfare Fund", reason: "State-specific; add as a custom reminder for now." }
-  - { title: "Auditor appointment (Form ADT-1)", reason: "Due 15 days after the AGM that appoints the auditor, so it depends on your AGM date; add as a custom reminder." }
+  - { title: "TDS on property, rent and similar (sections 194-IA, 194-IB, 194M)", reason: "Paid by challan-cum-statement within 30 days of the end of the month of deduction; not added yet." }
   - { title: "One Person Company (OPC) filings", reason: "OPC due dates differ from other companies and are not added yet." }
   - { title: "Licences and consents (FSSAI, pollution control, factory, fire)", reason: "Renewal dates are on your own certificates; upload them in Documents and the expiry date lands here." }
   - { title: "TCS returns and e-invoicing", reason: "Not covered yet." }

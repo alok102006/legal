@@ -5,7 +5,7 @@ export type VendorRisk = 'high' | 'medium' | 'low' | 'unverified';
 export type CheckStatus = 'pass' | 'warn' | 'fail' | 'unknown';
 export type RegistrySource = 'live' | 'sample' | 'unavailable';
 export type RegistryMode = 'live' | 'sample' | 'offline';
-export type IdKind = 'gstin' | 'pan' | 'udyam';
+export type IdKind = 'gstin' | 'pan' | 'udyam' | 'cin' | 'llpin' | 'tan' | 'ifsc' | 'iec' | 'fssai' | 'esic' | 'pf';
 
 export interface VendorCheckItem { key: string; label: string; status: CheckStatus; detail: string }
 
@@ -26,6 +26,10 @@ export interface RegistryInfo {
   filing_status?: string;
   note?: string;
   msme_category?: string;
+  /** true when this answer came from the 24 h lookup cache (no new registry call was made) */
+  cached?: boolean;
+  /** when the registry was actually asked (ISO) */
+  fetched_at?: string;
 }
 
 export interface LinkedContract { id: string; title: string | null; status: string; risk_level: string | null; overall_score: number | null }
@@ -77,6 +81,8 @@ export interface CheckResult {
   state_name: string | null;
   pan: string | null;
   holder_type: string | null;
+  /** decoded parts of a CIN / IFSC / PF ... number */
+  details?: Record<string, unknown>;
   saved_vendor: VendorBrief | null;
   contracts: LinkedContract[];
   notices: LinkedNotice[];
@@ -116,8 +122,34 @@ export const useVendorMatch = (name: string | null | undefined) =>
 /** The check desk: GSTIN, PAN or Udyam number. Runs offline checks + the live registry when connected. Does not save. */
 export const useCheckIdentifier = () =>
   useMutation({
-    mutationFn: async (b: { identifier: string; name?: string }) => (await apiClient.post<CheckResult>('/api/v1/vendors/check', b)).data,
+    mutationFn: async (b: { identifier: string; name?: string; kind?: IdKind }) => (await apiClient.post<CheckResult>('/api/v1/vendors/check', b)).data,
   });
+
+export interface RiskRules {
+  levels: { level: string; label: string; when: string[] }[];
+  checks: { key: string; label: string; fails_when: string; warns_when: string }[];
+  notes: string[];
+}
+
+/** The plain-English rules behind every verdict. Fetched only when `enabled` (when the disclosure is opened). */
+export const useRiskRules = (enabled: boolean) =>
+  useQuery({
+    queryKey: [...KEY, 'risk-rules'], enabled, staleTime: Infinity,
+    queryFn: async () => (await apiClient.get<RiskRules>('/api/v1/vendors/risk-rules')).data,
+  });
+
+export interface RecheckAll {
+  total: number;
+  rechecked: number;
+  live_lookups: number;
+  from_cache: number;
+  failed: number;
+  deferred: number;
+  deferred_names: string[];
+  changed: { id: string; name: string; previous: string; current: string }[];
+  registry_mode: string;
+  max_live_per_run: number;
+}
 
 function useInvalidate() {
   const qc = useQueryClient();
@@ -135,6 +167,10 @@ export function useUpdateVendor(id: string) {
 export function useRecheckVendor(id: string) {
   const inv = useInvalidate();
   return useMutation({ mutationFn: async () => (await apiClient.post<VendorDetail>(`/api/v1/vendors/${id}/recheck`)).data, onSuccess: inv });
+}
+export function useRecheckAll() {
+  const inv = useInvalidate();
+  return useMutation({ mutationFn: async () => (await apiClient.post<RecheckAll>('/api/v1/vendors/recheck-all')).data, onSuccess: inv });
 }
 export function useDeleteVendor() {
   const inv = useInvalidate();

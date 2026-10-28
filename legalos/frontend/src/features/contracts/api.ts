@@ -80,12 +80,23 @@ export interface ContractFacts {
   key_dates?: string[];
 }
 
+export interface ScoreContribution { title: string; category: string; severity: Severity; points: number; source: string; rule_id: string | null }
+
+export interface ReviewInfo { ai_calls?: number; parts?: number; sweep_run?: boolean; sweep_added?: number; client?: string | null; ocr_calls?: number }
+
 export interface ContractDetail extends ContractListItem {
+  /** e.g. "Dealership agreement": covers types the UI has no label for */
+  contract_type_label?: string | null;
   summary_points: string[];
   facts: ContractFacts | null;
   score_breakdown: {
     by_category: Record<string, number>;
     top_drivers: string[];
+    /** every counted finding with its points (absent on contracts read before this was recorded) */
+    contributions?: ScoreContribution[];
+    /** findings shown but not counted in the score (unverified or missing clauses) */
+    excluded_findings?: number;
+    review?: ReviewInfo;
     /** how much of a long contract was read by the AI */
     coverage?: { truncated: boolean; reviewed_segments: number | null; total_segments: number | null; reviewed_pages: number | null; total_pages: number | null };
   } | null;
@@ -97,7 +108,7 @@ export interface ContractDetail extends ContractListItem {
   segments: Segment[];
 }
 
-export interface ChatCitation { quote: string; segment_id: string | null; page: number | null; verified: boolean }
+export interface ChatCitation { quote: string; segment_id: string | null; page: number | null; verified: boolean; finding?: string | null; legal_ref?: string | null }
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -121,7 +132,12 @@ export const CONTRACT_TYPE_LABEL: Record<string, string> = {
   other: 'Contract',
 };
 
-export const contractTypeLabel = (t: string | null | undefined) => (t ? CONTRACT_TYPE_LABEL[t] ?? 'Contract' : null);
+/** The server's own label when it sent one, else the local map, else the raw type made readable. */
+export const contractTypeLabel = (t: string | null | undefined, serverLabel?: string | null) => {
+  if (serverLabel) return serverLabel;
+  if (!t) return null;
+  return CONTRACT_TYPE_LABEL[t] ?? (t === 'other' ? 'Contract' : t.replace(/_/g, ' ').replace(/^./, (m) => m.toUpperCase()));
+};
 
 /** "Landlord: Mehta Estates" - the other side of the deal, with their role. */
 export function counterpartyLine(facts: ContractFacts | null, fallbackName: string | null): string | null {
@@ -154,9 +170,11 @@ export function useContract(id: string | undefined) {
 export function useUploadContract() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ file, clientParty }: { file: File; clientParty?: string }) => {
+    mutationFn: async ({ files, clientParty }: { files: File[]; clientParty?: string }) => {
       const fd = new FormData();
-      fd.append('file', file);
+      // one document goes as `file`; several page photos go as `files`, in page order
+      if (files.length === 1) fd.append('file', files[0]);
+      else files.forEach((f) => fd.append('files', f));
       if (clientParty?.trim()) fd.append('client_party', clientParty.trim());
       const r = await apiClient.post<ContractListItem>('/api/v1/contracts/upload', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },

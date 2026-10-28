@@ -102,15 +102,20 @@ class QuickCheckOut(BaseModel):
     registry_source: Optional[str] = None
 
 
+IdentifierKind = Literal["gstin", "pan", "udyam", "cin", "llpin", "tan", "ifsc", "iec", "fssai", "esic", "pf"]
+
+
 class CheckIn(BaseModel):
-    """The check desk: one number (GSTIN, PAN or Udyam). Name is optional and only used for the name-vs-registry check."""
+    """The check desk: one number (GSTIN, PAN, Udyam, CIN, TAN, IFSC ...). Name is optional and only used for the
+    name checks. `kind` is optional: the type is guessed from the number unless it is ambiguous (e.g. an IEC)."""
     identifier: str = Field(min_length=1, max_length=40)
+    kind: Optional[IdentifierKind] = None
     name: Optional[str] = Field(default=None, max_length=200)
     state_code: Optional[str] = Field(default=None, max_length=2)
 
 
 class CheckResult(BaseModel):
-    kind: Literal["gstin", "pan", "udyam"]
+    kind: IdentifierKind
     identifier: str
     suggested_name: Optional[str] = None      # the registry's legal name, when we got one
     risk_level: str                           # high | medium | low | unverified
@@ -124,6 +129,7 @@ class CheckResult(BaseModel):
     state_name: Optional[str] = None
     pan: Optional[str] = None
     holder_type: Optional[str] = None
+    details: Dict[str, Any] = {}              # decoded parts of CIN / IFSC / PF ... numbers
     saved_vendor: Optional[VendorBrief] = None
     contracts: List[LinkedContract] = []
     notices: List[LinkedNotice] = []
@@ -134,3 +140,29 @@ class SampleOut(BaseModel):
     gstin: str
     name: str
     label: str
+
+
+class RecheckChange(BaseModel):
+    id: uuid.UUID
+    name: str
+    previous: str
+    current: str
+
+
+class RecheckAllOut(BaseModel):
+    total: int
+    rechecked: int
+    live_lookups: int            # paid registry calls made now
+    from_cache: int              # answered from the 24 h cache (free)
+    failed: int                  # registry did not answer; the earlier verdict was kept
+    deferred: int                # skipped because the per-run limit of paid lookups was reached
+    deferred_names: List[str] = []
+    changed: List[RecheckChange] = []
+    registry_mode: str
+    max_live_per_run: int
+
+
+class RiskRulesOut(BaseModel):
+    levels: List[Dict[str, Any]]
+    checks: List[Dict[str, Any]]
+    notes: List[str]

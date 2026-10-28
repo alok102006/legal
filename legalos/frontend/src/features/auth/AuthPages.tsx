@@ -11,6 +11,8 @@ const AuthLayout: React.FC<{ title: string; subtitle: string; children: React.Re
     {/* Brand panel */}
     <div className="relative hidden overflow-hidden bg-ink text-app lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16">
       <div className="bg-noise pointer-events-none absolute inset-0" aria-hidden />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.07] text-app" aria-hidden
+        style={{ backgroundImage: 'linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)', backgroundSize: '56px 56px', WebkitMaskImage: 'radial-gradient(ellipse at 30% 40%, #000 0%, transparent 75%)', maskImage: 'radial-gradient(ellipse at 30% 40%, #000 0%, transparent 75%)' }} />
       <div className="pointer-events-none absolute -left-40 top-1/3 h-[32rem] w-[32rem] rounded-full bg-primary/30 blur-3xl" aria-hidden />
       <div className="pointer-events-none absolute -bottom-32 right-0 h-80 w-80 rounded-full bg-primary/20 blur-3xl" aria-hidden />
       <div className="relative flex items-center gap-2">
@@ -22,7 +24,7 @@ const AuthLayout: React.FC<{ title: string; subtitle: string; children: React.Re
         <h2 className="max-w-lg font-display text-[2.6rem] font-normal leading-[1.08] tracking-[-0.01em] xl:text-[3.2rem]">
           Every contract read. Every supplier checked. Every deadline on one calendar.
         </h2>
-        <ul className="mt-10 grid max-w-xl gap-5">
+        <ul className="mt-12 grid max-w-xl gap-6">
           {[
             [FileSearch, 'Understand any contract', 'The clauses that could hurt you, quoted from your own document, with what to ask for instead.'],
             [ShieldCheck, 'Check a supplier before you pay', 'GSTIN verified against the live registry. Cancelled or fake registrations are caught in seconds.'],
@@ -31,7 +33,7 @@ const AuthLayout: React.FC<{ title: string; subtitle: string; children: React.Re
             const I = Icon as React.ElementType;
             return (
               <li key={head as string} className="flex gap-4">
-                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-app/15 bg-app/5"><I className="h-4 w-4" aria-hidden /></span>
+                <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-app/15 bg-app/5"><I className="h-4 w-4" aria-hidden /></span>
                 <div>
                   <p className="font-medium">{head as string}</p>
                   <p className="mt-0.5 text-sm leading-relaxed text-app/65">{body as string}</p>
@@ -48,8 +50,8 @@ const AuthLayout: React.FC<{ title: string; subtitle: string; children: React.Re
     <main className="flex items-center justify-center px-4 py-10 sm:px-8" id="main">
       <div className="w-full max-w-[26rem]">
         <div className="mb-10 lg:hidden"><Logo /></div>
-        <h1 className="text-[1.75rem] font-semibold leading-tight tracking-[-0.02em] text-ink">{title}</h1>
-        <p className="mb-7 mt-2 text-sm text-ink-2">{subtitle}</p>
+        <h1 className="text-[1.9rem] font-semibold leading-tight tracking-[-0.025em] text-ink">{title}</h1>
+        <p className="mb-8 mt-2.5 text-[15px] leading-7 text-ink-2">{subtitle}</p>
         {children}
       </div>
     </main>
@@ -80,7 +82,7 @@ const DemoButton: React.FC<{ onFill?: (email: string, password: string) => void 
   const [loading, setLoading] = useState(false);
   if (!demoAvailable) return null;
   return (
-    <div className="mt-6 rounded-xl border border-dashed border-line-strong bg-surface-2/60 p-4">
+    <div className="mt-6 rounded-2xl bg-surface-2 p-5">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-3">Demo company</p>
       <p className="mt-1.5 text-sm text-ink-2">Kulkarni Textiles, a 40-person textile business in Surat, with a contract, a legal notice, suppliers and documents already loaded.</p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -124,8 +126,8 @@ export const LoginPage: React.FC = () => {
 
   return (
     <AuthLayout title="Sign in" subtitle="Welcome back. Pick up where your company left off.">
-      <Card className="border border-line bg-surface p-6 shadow-raised">
-        <form onSubmit={submit} className="space-y-4" noValidate>
+      <Card className="border border-line bg-surface p-6 shadow-raised sm:p-7">
+        <form onSubmit={submit} className="space-y-5" noValidate>
           {error && <ErrorState title="Couldn't sign you in" message={error} />}
           <Field label="Email" required>
             {({ id }) => <Input id={id} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />}
@@ -171,8 +173,8 @@ export const RegisterPage: React.FC = () => {
 
   return (
     <AuthLayout title="Create your account" subtitle="A clean workspace for your company. Setup takes about two minutes.">
-      <Card className="border border-line bg-surface p-6 shadow-raised">
-        <form onSubmit={submit} className="space-y-4" noValidate>
+      <Card className="border border-line bg-surface p-6 shadow-raised sm:p-7">
+        <form onSubmit={submit} className="space-y-5" noValidate>
           {error && <ErrorState title="Couldn't create your account" message={error} />}
           <Field label="Your name" required>
             {({ id }) => <Input id={id} autoComplete="name" value={form.full_name} onChange={(e) => set('full_name')(e.target.value)} required />}

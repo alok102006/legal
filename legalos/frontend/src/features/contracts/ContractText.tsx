@@ -33,12 +33,12 @@ function findRange(text: string, quote: string): [number, number] | null {
   return null;
 }
 
-const MARK_STYLE: Record<Severity | 'flash', string> = {
-  critical: SEV_STYLE.critical.mark,
-  high: SEV_STYLE.high.mark,
-  medium: SEV_STYLE.medium.mark,
-  low: SEV_STYLE.low.mark,
-  flash: 'bg-primary-soft ring-1 ring-primary/50',
+const MARK_STYLE: Record<Severity | 'flash', { base: string; active: string }> = {
+  critical: { base: `${SEV_STYLE.critical.mark} ${SEV_STYLE.critical.markBar}`, active: SEV_STYLE.critical.markActive },
+  high: { base: `${SEV_STYLE.high.mark} ${SEV_STYLE.high.markBar}`, active: SEV_STYLE.high.markActive },
+  medium: { base: `${SEV_STYLE.medium.mark} ${SEV_STYLE.medium.markBar}`, active: SEV_STYLE.medium.markActive },
+  low: { base: `${SEV_STYLE.low.mark} ${SEV_STYLE.low.markBar}`, active: SEV_STYLE.low.markActive },
+  flash: { base: 'bg-primary-soft border-primary ring-1 ring-primary/30', active: 'bg-primary-soft' },
 };
 
 const sevRank = (s: Severity) => SEVERITY_ORDER.indexOf(s);
@@ -48,7 +48,7 @@ function pulse(el: Element | null | undefined) {
   if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
   try {
     (el as HTMLElement).animate(
-      [{ boxShadow: '0 0 0 0 rgba(37,106,191,0.55)' }, { boxShadow: '0 0 0 10px rgba(37,106,191,0)' }],
+      [{ boxShadow: '0 0 0 0 color-mix(in srgb, var(--ink-3) 55%, transparent)' }, { boxShadow: '0 0 0 10px color-mix(in srgb, var(--ink-3) 0%, transparent)' }],
       { duration: 850, iterations: 2, easing: 'ease-out' },
     );
   } catch { /* cosmetic only */ }
@@ -74,7 +74,7 @@ function paragraphRanges(text: string, joinWrapped: boolean, from = 0): [number,
   return out;
 }
 
-const Paragraph: React.FC<{ text: string; range: [number, number]; marks: Mark[]; onMark: (id: string | null) => void }> = ({ text, range: [a, b], marks, onMark }) => {
+const Paragraph: React.FC<{ text: string; range: [number, number]; marks: Mark[]; activeId: string | null; onMark: (id: string | null) => void }> = ({ text, range: [a, b], marks, activeId, onMark }) => {
   const nodes: React.ReactNode[] = [];
   let pos = a;
   for (const m of marks) {
@@ -90,7 +90,7 @@ const Paragraph: React.FC<{ text: string; range: [number, number]; marks: Mark[]
         tabIndex={m.findingId ? 0 : undefined}
         onClick={m.findingId ? () => onMark(m.findingId) : undefined}
         onKeyDown={m.findingId ? (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); onMark(m.findingId); } } : undefined}
-        className={cn('rounded-[3px] px-0.5 py-px text-ink [box-decoration-break:clone]', m.findingId && 'cursor-pointer', MARK_STYLE[m.sev])}
+        className={cn('rounded-[4px] border-l-2 px-1 py-px text-ink transition-colors [box-decoration-break:clone]', m.findingId && 'cursor-pointer', m.findingId && m.findingId === activeId ? MARK_STYLE[m.sev].active : MARK_STYLE[m.sev].base, m.findingId && m.findingId === activeId && MARK_STYLE[m.sev].base.split(' ')[1])}
       >{text.slice(s, e)}</mark>,
     );
     pos = e;
@@ -99,10 +99,11 @@ const Paragraph: React.FC<{ text: string; range: [number, number]; marks: Mark[]
   return <p className="mt-2.5">{nodes}</p>;
 };
 
-const SegmentBlock = memo(function SegmentBlock({ seg, findings, flash, joinWrapped, pageMark, dim, onMark, register }: {
+const SegmentBlock = memo(function SegmentBlock({ seg, findings, flash, activeId, joinWrapped, pageMark, dim, onMark, register }: {
   seg: Segment;
   findings: Finding[];
   flash: string | null;
+  activeId: string | null;
   joinWrapped: boolean;
   pageMark: number | null;
   dim: boolean;
@@ -135,7 +136,7 @@ const SegmentBlock = memo(function SegmentBlock({ seg, findings, flash, joinWrap
   return (
     <>
       {pageMark !== null && (
-        <div className="my-6 flex items-center gap-3 text-[11px] font-medium uppercase tracking-widest text-ink-3 first:mt-0" aria-label={`Page ${pageMark}`}>
+        <div className="my-8 flex items-center gap-3 font-sans text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 first:mt-0" aria-label={`Page ${pageMark}`}>
           <span className="h-px flex-1 bg-line" /><span>Page {pageMark}</span><span className="h-px flex-1 bg-line" />
         </div>
       )}
@@ -144,14 +145,14 @@ const SegmentBlock = memo(function SegmentBlock({ seg, findings, flash, joinWrap
         ref={(el) => register(seg.seg_id, el)}
         aria-label={seg.heading}
         className={cn(
-          '-ml-4 mb-5 rounded-r-md border-l-[3px] py-1 pl-4 transition-colors',
+          '-ml-4 mb-5 rounded-r-lg border-l-2 py-1 pl-4 transition-colors',
           top ? SEV_STYLE[top].bar : 'border-transparent',
           top && marks.length === 0 && 'bg-surface-2',
           dim && 'opacity-60',
         )}
       >
-        {headed && <h3 className="font-serif text-[1.02rem] font-semibold leading-snug text-ink">{first}</h3>}
-        {body.map((r) => <Paragraph key={r[0]} text={seg.text} range={r} marks={marks} onMark={onMark} />)}
+        {headed && <h3 className="font-serif text-[1.05rem] font-semibold leading-snug text-ink">{first}</h3>}
+        {body.map((r) => <Paragraph key={r[0]} text={seg.text} range={r} marks={marks} activeId={activeId} onMark={onMark} />)}
       </section>
     </>
   );
@@ -163,8 +164,9 @@ export const ContractText: React.FC<{
   hasPages: boolean;
   reviewedSegments: number | null;     // set when a long contract was only partly read
   focus: TextFocus | null;
+  activeId?: string | null;            // the finding currently selected in the rail: its highlight reads stronger
   onMark: (findingId: string | null) => void;
-}> = ({ segments, findings, hasPages, reviewedSegments, focus, onMark }) => {
+}> = ({ segments, findings, hasPages, reviewedSegments, focus, activeId = null, onMark }) => {
   const refs = useRef<Record<string, HTMLElement | null>>({});
   const register = useRef((id: string, el: HTMLElement | null) => { refs.current[id] = el; }).current;
 
@@ -195,7 +197,7 @@ export const ContractText: React.FC<{
   let prevPage: number | null = null;
 
   return (
-    <article className="mx-auto w-full max-w-[44rem] rounded-2xl border border-line bg-surface px-6 py-8 font-serif text-[16px] leading-[1.8] text-ink shadow-card sm:px-12 sm:py-12" aria-label="Contract text">
+    <article className="mx-auto w-full max-w-[44rem] rounded-2xl border border-line bg-surface px-6 py-8 font-serif text-[15px] leading-7 text-ink shadow-card sm:px-14 sm:py-14" aria-label="Contract text">
       {segments.map((s, i) => {
         const pm = hasPages && s.page_start && s.page_start !== prevPage ? s.page_start : null;
         if (hasPages && s.page_start) prevPage = s.page_start;
@@ -211,6 +213,7 @@ export const ContractText: React.FC<{
               seg={s}
               findings={bySegment.get(s.seg_id) ?? empty}
               flash={focus && focus.segmentId === s.seg_id && !focus.findingId ? focus.quote : null}
+              activeId={activeId}
               joinWrapped={hasPages}
               pageMark={pm}
               dim={reviewedSegments !== null && i >= reviewedSegments}

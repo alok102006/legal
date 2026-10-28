@@ -1,21 +1,22 @@
 import React, { useEffect, useState } from 'react';
+import { useRiskRules } from './api';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Bell, CheckCircle2, Circle, FileText, HelpCircle, PlugZap, ShieldAlert, ShieldCheck, ShieldQuestion, WifiOff, XCircle } from 'lucide-react';
 import { Badge, Button } from '@/ui/primitives';
 import { RiskLevelBadge } from '@/ui/risk';
 import { cn, formatDate, formatDateTime } from '@/lib/utils';
 import type { CheckResult, CheckStatus, IdKind, LinkedContract, LinkedNotice, RegistryInfo, RegistryMode, RegistrySource, VendorCheckItem, VendorDetail, VendorRisk } from './api';
-import { kindLabel, type Parsed, type SegStatus } from './identifiers';
+import { kindLabel, SAVEABLE_KINDS, type Parsed, type SegStatus } from './identifiers';
 
 /* ------------------------------------------------------------------ verdicts */
 
 type Tone = 'critical' | 'warn' | 'good' | 'neutral';
 
-const RISK: Record<VendorRisk, { label: string; short: string; tone: Tone; Icon: React.ElementType; ink: string; panel: string; blurb: string }> = {
-  high: { label: 'Do not pay', short: 'Do not pay', tone: 'critical', Icon: ShieldAlert, ink: 'text-critical-ink', panel: 'border-critical/40 bg-critical-soft', blurb: 'Something serious is wrong. Do not pay until the supplier explains it.' },
-  medium: { label: 'Check before paying', short: 'Check first', tone: 'warn', Icon: AlertTriangle, ink: 'text-warn-ink', panel: 'border-warn/50 bg-warn-soft', blurb: 'Nothing fatal, but a few things do not add up. Confirm them before you pay.' },
-  low: { label: 'Safe to proceed', short: 'Safe', tone: 'good', Icon: ShieldCheck, ink: 'text-good-ink', panel: 'border-good/40 bg-good-soft', blurb: 'Every check we could run passed, including the live registry.' },
-  unverified: { label: 'Looks valid, not verified live', short: 'Not verified', tone: 'neutral', Icon: ShieldQuestion, ink: 'text-ink-2', panel: 'border-line-strong bg-surface-2', blurb: 'The number is well-formed, but we could not confirm it with the GST registry.' },
+const RISK: Record<VendorRisk, { label: string; short: string; tone: Tone; Icon: React.ElementType; ink: string; panel: string; pill: string; blurb: string }> = {
+  high: { label: 'Do not pay', short: 'Do not pay', tone: 'critical', Icon: ShieldAlert, ink: 'text-critical-ink', panel: 'border-critical/30 bg-critical-soft', pill: 'bg-critical text-white', blurb: 'Something serious is wrong. Do not pay until the supplier explains it.' },
+  medium: { label: 'Check before paying', short: 'Check first', tone: 'warn', Icon: AlertTriangle, ink: 'text-warn-ink', panel: 'border-warn/40 bg-warn-soft', pill: 'bg-warn text-[#2b1d00]', blurb: 'Nothing fatal, but a few things do not add up. Confirm them before you pay.' },
+  low: { label: 'Safe to proceed', short: 'Safe', tone: 'good', Icon: ShieldCheck, ink: 'text-good-ink', panel: 'border-good/30 bg-good-soft', pill: 'bg-good text-white', blurb: 'Every check we could run passed, including the live registry.' },
+  unverified: { label: 'Looks valid, not verified live', short: 'Not verified', tone: 'neutral', Icon: ShieldQuestion, ink: 'text-ink-2', panel: 'border-line bg-surface-2', pill: 'border border-line-strong bg-surface text-ink', blurb: 'The number is well-formed, but we could not confirm it with the GST registry.' },
 };
 
 export const riskTone = (r: VendorRisk) => RISK[r];
@@ -43,14 +44,15 @@ const PROVIDER_LABEL: Record<string, string> = { sandbox: 'Sandbox.co.in', gener
 /* ------------------------------------------------------------------ the number, character by character */
 
 const CELL: Record<SegStatus, string> = {
-  ok: 'border-good bg-good-soft text-good-ink',
-  bad: 'border-critical bg-critical-soft text-critical-ink',
-  partial: 'border-primary/60 bg-primary-soft text-primary-ink',
-  empty: 'border-dashed border-line-strong text-ink-3',
+  ok: 'border-good/50 bg-good-soft text-good-ink',
+  bad: 'border-critical/60 bg-critical-soft text-critical-ink',
+  partial: 'border-line-strong bg-surface-2 text-ink',
+  empty: 'border-dashed border-line-strong bg-transparent text-ink-3',
 };
 
 export const IdentifierStrip: React.FC<{ parsed: Parsed }> = ({ parsed }) => {
   const { segs } = parsed;
+  if (parsed.kind && segs.length === 0 && parsed.summary) return <p className="mx-auto mt-4 max-w-md text-sm text-ink-2" aria-live="polite">{parsed.summary}. Press Enter to check it.</p>;
   if (!parsed.kind || segs.length === 0) return null;
   const firstEmpty = segs.findIndex((s) => s.status === 'empty');
   const rows = segs.filter((s, i) => s.status !== 'empty' || i === firstEmpty);
@@ -60,7 +62,7 @@ export const IdentifierStrip: React.FC<{ parsed: Parsed }> = ({ parsed }) => {
         {segs.map((s, si) => (
           <div key={s.id} className={cn('flex min-w-0 gap-[3px]', si > 0 && 'ml-2 sm:ml-3')}>
             {Array.from({ length: s.size }).map((_, i) => (
-              <span key={i} className={cn('flex h-9 w-[1.35rem] items-center justify-center rounded-md border font-mono text-sm font-semibold transition-colors duration-150 sm:h-11 sm:w-8 sm:text-lg', CELL[s.text[i] ? s.status : 'empty'])}>
+              <span key={i} className={cn('flex h-9 w-[1.35rem] items-center justify-center rounded-md border font-mono text-sm font-semibold tabular-nums transition-colors duration-150 sm:w-7 sm:text-base', CELL[s.text[i] ? s.status : 'empty'])}>
                 {s.text[i] ?? '·'}
               </span>
             ))}
@@ -129,12 +131,15 @@ export interface CheckView {
   contracts: LinkedContract[];
   notices: LinkedNotice[];
   checked_at: string | null;
+  /** decoded parts of CIN / IFSC / PF ... numbers */
+  details?: Record<string, unknown>;
 }
 
 export const viewFromResult = (r: CheckResult): CheckView => ({
   kind: r.kind, identifier: r.identifier, name: r.suggested_name ?? r.saved_vendor?.name ?? null, state_name: r.state_name,
   risk_level: r.risk_level, summary: r.summary, reasons: r.reasons, checks: r.checks, registry: r.registry, registry_source: r.registry_source,
   registry_mode: r.registry_mode, registry_provider: r.registry_provider, contracts: r.contracts, notices: r.notices, checked_at: r.checked_at,
+  details: r.details,
 });
 
 export const viewFromVendor = (v: VendorDetail): CheckView => ({
@@ -143,7 +148,27 @@ export const viewFromVendor = (v: VendorDetail): CheckView => ({
   registry_mode: v.registry_mode, registry_provider: v.registry_provider, contracts: v.contracts, notices: v.notices, checked_at: v.last_checked_at,
 });
 
-const IDENTITY_KEYS = ['gstin', 'pan', 'entity', 'state', 'udyam'];
+const IDENTITY_KEYS = ['gstin', 'pan', 'entity', 'state', 'udyam', 'format', 'format_note', 'pan_name'];
+
+const DETAIL_LABEL: Record<string, string> = {
+  bank_code: 'Bank code', bank_name: 'Bank', branch_code: 'Branch code', listing_status: 'Listing', industry_code: 'Industry code',
+  state_code: 'State code', state_name: 'State', incorporation_year: 'Incorporated', company_class: 'Company class', company_type: 'Company type',
+  registration_number: 'Registration no.', name_initial: 'Deductor initial', pan_based: 'PAN-based', region_code: 'Region', office_code: 'Office',
+  establishment_number: 'Establishment no.', extension: 'Extension', holder_type: 'Holder type', pan: 'PAN',
+};
+const DETAIL_HIDDEN = new Set(['listed']);
+const detailText = (v: unknown) => (typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v));
+
+/** Decoded parts of a CIN, IFSC, PF code ... shown with the identity checks. */
+const DetailsGrid: React.FC<{ details?: Record<string, unknown> }> = ({ details }) => {
+  const rows = Object.entries(details ?? {}).filter(([k, v]) => !DETAIL_HIDDEN.has(k) && v !== null && v !== undefined && v !== '' && typeof v !== 'object');
+  if (rows.length === 0) return null;
+  return (
+    <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl bg-surface-2 p-3.5 sm:grid-cols-3" aria-label="What the number says">
+      {rows.map(([k, v]) => <Fact key={k} label={DETAIL_LABEL[k] ?? k.replace(/_/g, ' ').replace(/^./, (m) => m.toUpperCase())} mono={/code|number|no\./i.test(DETAIL_LABEL[k] ?? k)}>{detailText(v)}</Fact>)}
+    </dl>
+  );
+};
 
 function useStagedReveal(total: number, runKey: string, animate: boolean): number {
   const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -162,10 +187,10 @@ const Stage: React.FC<{ n: number; title: string; children: React.ReactNode; asi
   const [shown, setShown] = useState(false);
   useEffect(() => { const id = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(id); }, []);
   return (
-    <section aria-label={title} className={cn('border-t border-line px-4 py-5 transition-all duration-300 motion-reduce:transition-none sm:px-6', shown ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0')}>
+    <section aria-label={title} className={cn('border-t border-line px-4 py-5 transition-opacity duration-150 motion-reduce:transition-none sm:px-6', shown ? 'opacity-100' : 'opacity-0')}>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
-          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-2 text-[11px] font-semibold text-ink-2" aria-hidden>{n}</span>{title}
+        <h3 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-2 text-[11px] font-semibold tracking-normal text-ink-2" aria-hidden>{n}</span>{title}
         </h3>
         {aside}
       </div>
@@ -194,7 +219,7 @@ const RegistrySection: React.FC<{ view: CheckView; onRetry?: () => void; retryin
     const rows = regChecks.filter((c) => !(c.key === 'registry' && c.status === 'pass'));
     return (
       <>
-        {src === 'sample' && <p className="mb-3 rounded-lg bg-primary-soft px-3 py-2 text-sm text-primary-ink">Sample record (demo data). This is not a live registry answer.</p>}
+        {src === 'sample' && <p className="mb-3 rounded-lg bg-surface-2 px-3 py-2 text-sm text-ink-2">Sample record (demo data). This is not a live registry answer.</p>}
         <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
           {reg.legal_name && <Fact label="Legal name">{reg.legal_name}</Fact>}
           {reg.trade_name && <Fact label="Trade name">{reg.trade_name}</Fact>}
@@ -212,6 +237,15 @@ const RegistrySection: React.FC<{ view: CheckView; onRetry?: () => void; retryin
   }
 
   const kind = reg?.error_kind;
+  if (!SAVEABLE_KINDS.includes(view.kind)) {
+    return (
+      <div className="flex gap-3 rounded-xl border border-line bg-surface-2 p-4">
+        <WifiOff className="mt-0.5 h-5 w-5 shrink-0 text-ink-3" aria-hidden />
+        <div><p className="font-semibold text-ink">No public registry to ask</p>
+          <p className="mt-0.5 text-sm text-ink-2">This {kindLabel(view.kind)} was checked for format only. The identity checks above say where to confirm it.</p></div>
+      </div>
+    );
+  }
   if (kind === 'auth' || kind === 'quota' || kind === 'unavailable') {
     return (
       <div role="alert" className="flex gap-3 rounded-xl border border-critical/40 bg-critical-soft p-4">
@@ -271,9 +305,45 @@ const LinkedSection: React.FC<{ view: CheckView }> = ({ view }) => {
   );
 };
 
+/** Quiet disclosure: the plain-English rules behind every verdict. The rules load only when it is opened. */
+export const RiskRules: React.FC = () => {
+  const [open, setOpen] = useState(false);
+  const rules = useRiskRules(open);
+  return (
+    <details className="mx-auto mt-12 max-w-2xl rounded-2xl bg-surface-2 px-4 py-3" onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
+      <summary className="cursor-pointer text-sm font-medium text-ink-2">Risk rules: how a verdict is decided</summary>
+      {open && rules.isLoading && <p className="mt-3 text-sm text-ink-3">Loading the rules...</p>}
+      {open && rules.isError && <p className="mt-3 text-sm text-ink-2">Could not load the rules. Try again in a moment.</p>}
+      {rules.data && (
+        <div className="mt-3 space-y-5">
+          <ul className="space-y-3">
+            {rules.data.levels.map((l) => (
+              <li key={l.level}>
+                <p className="text-sm font-semibold text-ink">{l.label}</p>
+                {l.when.map((w) => <p key={w} className="mt-0.5 text-sm text-ink-2">{w}</p>)}
+              </li>))}
+          </ul>
+          <div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">The checks</p>
+            <ul className="divide-y divide-line">
+              {rules.data.checks.map((c) => (
+                <li key={c.key} className="py-2 text-sm">
+                  <p className="font-medium text-ink">{c.label}</p>
+                  {c.fails_when && <p className="text-ink-2"><span className="font-medium text-critical-ink">Fails:</span> {c.fails_when}</p>}
+                  {c.warns_when && <p className="text-ink-2"><span className="font-medium text-warn-ink">Warns:</span> {c.warns_when}</p>}
+                </li>))}
+            </ul>
+          </div>
+          {rules.data.notes.map((n) => <p key={n} className="text-xs text-ink-3">{n}</p>)}
+        </div>
+      )}
+    </details>
+  );
+};
+
 export const ModeChip: React.FC<{ mode: RegistryMode; provider: string | null }> = ({ mode, provider }) =>
   mode === 'live' ? <Badge tone="good" icon={<PlugZap className="h-3.5 w-3.5" aria-hidden />}>Live registry: {PROVIDER_LABEL[provider ?? ''] ?? provider ?? 'connected'}</Badge>
-    : mode === 'sample' ? <Badge tone="info">Sample registry (demo)</Badge>
+    : mode === 'sample' ? <Badge>Sample registry (demo)</Badge>
       : <Badge icon={<WifiOff className="h-3.5 w-3.5" aria-hidden />}>Offline checks only</Badge>;
 
 export const VerificationCard: React.FC<{
@@ -289,7 +359,7 @@ export const VerificationCard: React.FC<{
     <article className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card" aria-label="Verification result">
       <header className="flex flex-wrap items-start justify-between gap-3 px-4 py-5 sm:px-6">
         <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wide text-ink-3">{kindLabel(view.kind)}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">{kindLabel(view.kind)}</p>
           <p className="break-all font-mono text-xl font-semibold tracking-wide text-ink sm:text-2xl">{view.identifier || '-'}</p>
           {(view.name || view.state_name) && <p className="mt-1 text-sm text-ink-2">{[view.name, view.state_name].filter(Boolean).join(' - ')}</p>}
         </div>
@@ -298,22 +368,24 @@ export const VerificationCard: React.FC<{
 
       <Stage n={1} title="Identity">
         {identity.length > 0 ? <CheckRows checks={identity} /> : <p className="text-sm text-ink-2">No offline checks apply.</p>}
+        <DetailsGrid details={view.details} />
       </Stage>
 
       {shown >= 2 && (
-        <Stage n={2} title="Registry" aside={view.registry_mode === 'live' && view.registry_source === 'live' ? <span className="text-xs text-ink-3">Live answer</span> : undefined}>
+        <Stage n={2} title="Registry" aside={view.registry?.cached
+          ? <span className="text-xs text-ink-3" title={view.registry.fetched_at ? formatDateTime(view.registry.fetched_at) : undefined}>Cached from {view.registry.fetched_at ? ago(view.registry.fetched_at) : 'an earlier check'}</span>
+          : view.registry_mode === 'live' && view.registry_source === 'live' ? <span className="text-xs text-ink-3">Live answer</span> : undefined}>
           <RegistrySection view={view} onRetry={onRetryRegistry} retrying={retrying} />
         </Stage>
       )}
 
       {shown >= 3 && (
         <Stage n={3} title="Verdict">
-          <div className={cn('rounded-xl border p-4', R.panel)} role="status">
-            <div className="flex items-center gap-2.5">
-              <R.Icon className={cn('h-6 w-6 shrink-0', R.ink)} aria-hidden />
-              <p className={cn('text-lg font-semibold sm:text-xl', R.ink)}>{R.label}</p>
-            </div>
-            <p className="mt-1 text-sm text-ink-2">{R.blurb}</p>
+          <div className={cn('rounded-2xl border p-4 sm:p-5', R.panel)} role="status">
+            <span className={cn('inline-flex items-center gap-2 rounded-full px-4 py-2 text-base font-semibold sm:text-lg', R.pill)}>
+              <R.Icon className="h-5 w-5 shrink-0" aria-hidden />{R.label}
+            </span>
+            <p className="mt-3 text-[15px] leading-7 text-ink-2">{view.risk_level === 'unverified' && !SAVEABLE_KINDS.includes(view.kind) ? 'The number is well-formed, but no public registry can confirm it. Use the portal named in the checks above.' : R.blurb}</p>
             {reasons.length > 0 && (
               <ul className="mt-3 space-y-1.5 text-sm text-ink">
                 {reasons.map((r, i) => <li key={i} className="flex gap-2"><span className={cn('mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-current', R.ink)} aria-hidden /><span>{r}</span></li>)}

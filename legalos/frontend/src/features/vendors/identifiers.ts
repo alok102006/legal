@@ -34,7 +34,7 @@ export function gstinCheckChar(first14: string): string {
 /** Upper-case, drop spaces/hyphens/anything that is not a letter or digit. */
 export const clean = (raw: string): string => raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
 
-export type Kind = 'gstin' | 'pan' | 'udyam';
+export type Kind = 'gstin' | 'pan' | 'udyam' | 'cin' | 'llpin' | 'tan' | 'ifsc' | 'iec' | 'fssai' | 'esic' | 'pf';
 export type SegStatus = 'ok' | 'bad' | 'partial' | 'empty';
 
 export interface Seg {
@@ -64,8 +64,23 @@ function seg(id: string, value: string, start: number, size: number, hint: strin
   return { id, text, size, hint, ...judge(text) };
 }
 
+/** Numbers with no registry: we only know their shape. Mirrors `identify` in the backend. */
+export function detectOtherKind(v: string): Kind | null {
+  if (v.length === 21 && 'LU'.includes(v[0])) return 'cin';
+  if (/^[A-Z]{3}\d{4}$/.test(v)) return 'llpin';
+  if (v.length === 11 && /^[A-Z]{4}0/.test(v)) return 'ifsc';
+  if (/^[A-Z]{4}\d{5}[A-Z]$/.test(v)) return 'tan';
+  if (/^\d{10}$/.test(v)) return 'iec';
+  if (/^\d{14}$/.test(v)) return 'fssai';
+  if (/^\d{17}$/.test(v)) return 'esic';
+  if ((v.length === 12 || v.length === 15) && /^[A-Z]{5}\d{7}(\d{3})?$/.test(v)) return 'pf';
+  return null;
+}
+
 export function detectKind(v: string): Kind | null {
   if (!v) return null;
+  const other = detectOtherKind(v);
+  if (other) return other;
   if (/^\d/.test(v)) return 'gstin';
   if (v.startsWith('UDYAM') && !(v.length === 10 && /^[A-Z]{5}\d{4}[A-Z]$/.test(v))) return 'udyam';
   if (/^[A-Z]/.test(v)) return 'pan';
@@ -130,6 +145,9 @@ function parseUdyam(v: string): Parsed {
 export function parseIdentifier(raw: string): Parsed {
   const v = clean(raw);
   const kind = detectKind(v);
+  if (kind && kind !== 'gstin' && kind !== 'pan' && kind !== 'udyam') {
+    return { kind, value: v, segs: [], complete: true, allOk: true, summary: `Looks like a ${kindLabel(kind)}. Its parts are decoded when you check it` };
+  }
   if (kind === 'pan') return parsePan(v);
   if (kind === 'udyam') return parseUdyam(v);
   if (kind === 'gstin') return parseGstin(v);
@@ -137,4 +155,11 @@ export function parseIdentifier(raw: string): Parsed {
 }
 
 /** Pretty form of a stored number. */
-export const kindLabel = (k: Kind | string): string => (k === 'pan' ? 'PAN' : k === 'udyam' ? 'Udyam number' : 'GSTIN');
+const KIND_LABEL: Record<string, string> = {
+  gstin: 'GSTIN', pan: 'PAN', udyam: 'Udyam number', cin: 'CIN', llpin: 'LLPIN', tan: 'TAN', ifsc: 'IFSC', iec: 'IEC',
+  fssai: 'FSSAI licence number', esic: 'ESIC employer code', pf: 'PF establishment code',
+};
+export const kindLabel = (k: Kind | string): string => KIND_LABEL[k] ?? 'GSTIN';
+
+/** Numbers the GST registry can be asked about, or that are saved as a supplier column. Everything else is format-checked only. */
+export const SAVEABLE_KINDS: readonly string[] = ['gstin', 'pan', 'udyam'];

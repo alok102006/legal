@@ -5,7 +5,8 @@ import { toast } from 'sonner';
 import { toFriendlyError } from '@/api/client';
 import { useSession } from '@/lib/auth/session';
 import { useLoadSample } from '@/features/samples/api';
-import { AiDisclaimer, Button, Dropzone, ErrorState, Field, Input, Skeleton } from '@/ui/primitives';
+import { PhotoDropzone } from '@/features/shared/PhotoDropzone';
+import { AiDisclaimer, Button, EmptyState, ErrorState, Field, Input, SkeletonRows } from '@/ui/primitives';
 import { Modal } from '@/ui/overlays';
 import { SidePanel, PanelLabel, closeSidePanel } from '@/ui/sidepanel';
 import { useNewParam } from '@/ui/workspace';
@@ -26,22 +27,24 @@ const UploadForm: React.FC<{ onStarted?: () => void; showSample?: boolean }> = (
   const navigate = useNavigate();
   const upload = useUploadContract();
   const sample = useLoadSample();
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [party, setParty] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const err = localError ?? (upload.isError ? toFriendlyError(upload.error).message : null);
 
-  const pick = (f: File | null) => {
+  const pick = (list: File[]) => {
     upload.reset();
     setLocalError(null);
-    if (!f) return setFile(null);
-    const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
-    if (!ALLOWED.includes(ext)) { setFile(null); return setLocalError(`'.${ext}' files are not supported. Please upload a PDF, Word, text or image file.`); }
-    if (f.size > MAX_BYTES) { setFile(null); return setLocalError('That file is larger than 10 MB. Try a smaller scan or split it.'); }
-    setFile(f);
+    for (const f of list) {
+      const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
+      if (!ALLOWED.includes(ext)) return setLocalError(`'.${ext}' files are not supported. Please upload a PDF, Word, text or image file.`);
+      if (f.size > MAX_BYTES) return setLocalError(`${f.name} is larger than 10 MB. Try a smaller scan or split it.`);
+    }
+    setFiles(list);
   };
+  const file = files.length > 0;
 
-  const start = () => file && upload.mutate({ file, clientParty: party }, {
+  const start = () => file && upload.mutate({ files, clientParty: party }, {
     onSuccess: (c) => { toast.success('Uploaded. Reading has started.'); onStarted?.(); navigate(`/contracts/${c.id}`); },
   });
   const loadSample = () => sample.mutate('contract', {
@@ -50,9 +53,9 @@ const UploadForm: React.FC<{ onStarted?: () => void; showSample?: boolean }> = (
   });
 
   return (
-    <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); start(); }}>
-      <Dropzone accept={ACCEPT} file={file} onFile={pick} disabled={upload.isPending}
-        hint="PDF, Word, text or a photo of the pages · up to 10 MB" />
+    <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); start(); }}>
+      <PhotoDropzone accept={ACCEPT} files={files} onFiles={pick} disabled={upload.isPending}
+        hint="PDF, Word, text, or photos of the pages (add them in order) · up to 10 MB each" />
       {file && (
         <Field label="Which party are you?" hint={`Optional. Leave blank and we will assume you are ${org?.legal_name ?? 'your company'}.`}>
           {({ id, describedBy }) => <Input id={id} aria-describedby={describedBy} value={party} onChange={(e) => setParty(e.target.value)} placeholder="e.g. Buyer, Tenant, or your name as written in the contract" />}
@@ -60,10 +63,10 @@ const UploadForm: React.FC<{ onStarted?: () => void; showSample?: boolean }> = (
       )}
       {err && <ErrorState title="Couldn't upload this file" message={err} />}
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" size="lg" loading={upload.isPending} disabled={!file} icon={<Upload className="h-4 w-4" aria-hidden />}>Start reading</Button>
+        <Button type="submit" size="lg" loading={upload.isPending} disabled={!file} className="h-12" icon={<Upload className="h-4 w-4" aria-hidden />}>Start reading</Button>
         {showSample && (
           <button type="button" onClick={loadSample} disabled={sample.isPending}
-            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-primary-ink hover:underline disabled:opacity-60">
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-ink-2 transition-colors hover:text-ink hover:underline disabled:opacity-60">
             {sample.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Sparkles className="h-4 w-4" aria-hidden />}
             Or try the sample supply agreement
           </button>
@@ -81,12 +84,12 @@ const CHECKS: [React.ElementType, string, string][] = [
 
 const UploadStage: React.FC = () => (
   <div className="h-full overflow-y-auto">
-    <div className="mx-auto grid w-full max-w-6xl gap-10 px-6 pb-16 pt-20 sm:px-10 lg:grid-cols-[1.15fr_1fr] lg:gap-16 lg:pt-24 xl:px-14">
+    <div className="mx-auto grid w-full max-w-6xl gap-10 px-6 pb-20 pt-20 sm:px-10 lg:grid-cols-[1.15fr_1fr] lg:gap-16 lg:pt-24 xl:px-14">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">Contracts</p>
         <h1 className="mt-3 font-display text-4xl leading-[1.05] text-ink sm:text-[3.6rem]">Read it before you sign it.</h1>
         <p className="mt-4 max-w-xl text-base text-ink-2">Upload any contract. We read every clause, mark what could hurt you, and tell you what to ask for instead, in plain English.</p>
-        <div className="mt-8 rounded-2xl bg-surface-2 p-4 sm:p-5">
+        <div className="mt-8 rounded-2xl bg-surface-2 p-4 sm:p-6">
           <UploadForm showSample />
         </div>
         <AiDisclaimer className="mt-6" />
@@ -95,7 +98,7 @@ const UploadStage: React.FC = () => (
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">What we check</p>
         <ul className="mt-4 space-y-3" aria-label="What we check">
           {CHECKS.map(([Icon, title, body]) => (
-            <li key={title} className="flex gap-4 rounded-2xl bg-surface-2 p-4">
+            <li key={title} className="flex gap-4 rounded-2xl bg-surface-2 p-4 transition-shadow hover:shadow-card">
               <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface text-ink-2 shadow-card" aria-hidden><Icon className="h-4 w-4" /></span>
               <span><span className="block text-[15px] font-semibold text-ink">{title}</span><span className="mt-0.5 block text-sm leading-relaxed text-ink-2">{body}</span></span>
             </li>
@@ -155,10 +158,10 @@ const ContractList: React.FC<{ onPick: () => void }> = ({ onPick }) => {
       )}
       <PanelLabel>Recent</PanelLabel>
       <nav aria-label="Your contracts">
-        {isLoading && <div className="space-y-2 p-1">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full" />)}</div>}
+        {isLoading && <SkeletonRows rows={4} className="px-2" />}
         {isError && <ErrorState message={toFriendlyError(error).message} onRetry={() => refetch()} retrying={isFetching} />}
-        {data && data.length === 0 && <p className="px-3 py-6 text-center text-sm text-ink-3">Your contracts will appear here.</p>}
-        {data && data.length > 0 && list.length === 0 && <p className="px-3 py-6 text-center text-sm text-ink-3">No contract matches “{q}”.</p>}
+        {data && data.length === 0 && <EmptyState icon={<History className="h-5 w-5" />} title="No contracts yet" description="Upload one and it will be kept here." className="py-10" />}
+        {data && data.length > 0 && list.length === 0 && <EmptyState title={`No contract matches “${q}”`} description="Try a different name or party." className="py-8" />}
         <ul className="space-y-0.5">{list.map((c) => <li key={c.id}><ContractRow c={c} onPick={onPick} /></li>)}</ul>
       </nav>
     </>

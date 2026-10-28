@@ -64,10 +64,10 @@ const OverdueGroup = React.forwardRef<HTMLElement, { tasks: ComplianceTask[]; fl
   const unpriced = tasks.length - priced.length - fixed.length;
   const shown = all ? tasks : tasks.slice(0, 4);
   return (
-    <section ref={ref} aria-label="Overdue" className="rounded-2xl border border-critical/40 bg-critical-soft/40 p-3 sm:p-4">
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 px-1">
+    <section ref={ref} aria-label="Overdue" className="border-l-2 border-critical py-1 pl-4 sm:pl-5">
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-critical-ink">Overdue · {tasks.length}</h2>
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-critical-ink">Overdue · {tasks.length}</h2>
           {total > 0
             ? <p className="mt-0.5 text-sm text-ink-2">
                 May have cost up to <strong className="text-ink">{formatINR(total)}</strong> in late fees so far
@@ -104,12 +104,12 @@ const HowBuilt: React.FC<{ summary: ReturnType<typeof useComplianceSummary>['dat
   const rules = useRulesOverview(open);
   const unverified = rules.data?.applicable.filter((r) => !r.verified).length ?? 0;
   return (
-    <details className="group rounded-2xl bg-surface-2" onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-ink [&::-webkit-details-marker]:hidden">
+    <details className="group" onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
+      <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg py-1.5 text-[13px] font-medium text-ink-2 hover:text-ink [&::-webkit-details-marker]:hidden">
         <span>How this is built</span>
         <ChevronDown className="h-4 w-4 text-ink-3 transition-transform group-open:rotate-180" aria-hidden />
       </summary>
-      <div className="space-y-4 border-t border-line px-4 pb-4 pt-3 text-sm">
+      <div className="mt-2 space-y-4 rounded-2xl bg-surface-2 p-4 text-sm">
         <p className="text-ink-2">
           A fixed rules engine, no AI guesswork. {s ? <>It holds <strong className="text-ink">{s.rules_total} rules</strong> from <strong className="text-ink">{s.sources_total} legal sources</strong>; <strong className="text-ink">{s.rules_applicable}</strong> apply to your profile. </> : null}
           Rules version {s?.rules_version ?? '-'}{s?.last_synced ? `, calendar last updated ${formatDateTime(s.last_synced)}` : ''}.
@@ -195,7 +195,7 @@ export const CompliancePage: React.FC = () => {
       <div className="flex h-full items-center justify-center overflow-y-auto p-6">
         <EmptyState icon={<CalendarClock className="h-6 w-6" />} title="Tell us about your company first"
           description="The deadlines that apply depend on your type of business, state, size and registrations."
-          action={<Link to="/onboarding" className="inline-flex min-h-[44px] items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-on hover:bg-primary-hover">Set up your company</Link>} />
+          action={<Link to="/onboarding" className="btn-raised inline-flex h-10 items-center rounded-xl bg-primary px-4 text-sm font-medium text-primary-on hover:bg-primary-hover">Set up your company</Link>} />
       </div>
     );
   }
@@ -218,13 +218,13 @@ export const CompliancePage: React.FC = () => {
         <div className="mx-auto w-full max-w-6xl space-y-5 px-6 pb-20 pt-16 sm:px-10 md:pt-6 xl:px-14">
           <header className="md:pr-56">
             <div className="flex items-center gap-1.5">
-              <h1 className="text-xl font-semibold text-ink">Compliance planner</h1>
+              <h1 className="font-display text-[2rem] leading-none text-ink">Compliance planner</h1>
               <Button variant="ghost" size="sm" aria-label="Refresh calendar from profile" title="Rebuild the calendar from your profile" disabled={sync.isPending}
-                className="!h-8 !w-8 !min-h-0 !px-0"
+                className="!h-9 !w-9 !min-h-0 !rounded-lg !px-0"
                 icon={<RefreshCw className={cn('h-4 w-4', sync.isPending && 'animate-spin')} aria-hidden />}
                 onClick={() => sync.mutate(undefined, { onSuccess: (r) => toast.success(r.created || r.removed ? `Calendar updated: ${r.created} added, ${r.removed} removed` : 'Calendar is up to date'), onError: (e) => toast.error(toFriendlyError(e).message) })} />
             </div>
-            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-sm text-ink-2">
+            <p className="mt-2 flex flex-wrap items-center gap-x-2 text-sm text-ink-2">
               {summary.isLoading ? <Skeleton className="h-5 w-72" /> : stats.map((x, i) => (
                 <React.Fragment key={x.text}>{i > 0 && <span aria-hidden className="text-ink-3">·</span>}<span className={cn('font-medium', x.tone)}>{x.text}</span></React.Fragment>
               ))}
@@ -251,7 +251,7 @@ export const CompliancePage: React.FC = () => {
               {overdue.length > 0 && <OverdueGroup ref={overdueRef} tasks={overdue} flash={flash} />}
 
               <section aria-label={monthTitle(focus)}>
-                <h2 className="mb-3 flex items-baseline gap-2 text-lg font-semibold text-ink">
+                <h2 className="mb-4 flex items-baseline gap-2 text-lg font-semibold tracking-[-0.01em] text-ink">
                   {monthTitle(focus)}
                   <span className="text-sm font-normal text-ink-3">{monthTasks.length === 0 ? 'nothing due' : plural(monthTasks.length, 'filing')}</span>
                 </h2>

@@ -57,3 +57,17 @@ export const todayIso = () => {
 export const dayDiff = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
 
 export const longDate = (iso: string | null) => formatDate(iso);
+
+export const downloadText = (name: string, text: string) => {
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.click();
+  URL.revokeObjectURL(url);
+};
+
+export const BASIS_LABEL: Record<string, string> = {
+  stated_date: 'Date stated in the notice',
+  stated_period: 'Period stated in the notice',
+  hearing: 'Hearing date',
+  statutory: 'Time the law allows',
+};

@@ -1,7 +1,7 @@
 import json
 
 from app.core.llm.errors import LLMAuthError, LLMUnavailable
-from app.workspaces.contract_intelligence.engine.schemas import ChatAnswer, ContractFacts, RiskAnalysis
+from app.workspaces.contract_intelligence.engine.schemas import ChatAnswer, ChecklistSweep, ContractFacts, RiskAnalysis
 from tests.workspaces.contract_intelligence.sample_contracts import SUPPLY_AGREEMENT
 
 QUOTE = ("The Buyer shall indemnify the Supplier against all losses, claims and expenses of whatever nature "
@@ -26,6 +26,8 @@ def _handler(call):
         return json.dumps({"answer": "Payment is due within 60 days of invoice receipt.", "found_in_contract": True,
                            "citations": [{"quote": "The Buyer shall pay each invoice within 60 days of receipt of the invoice.",
                                           "segment_id": "S3"}]})
+    if call.schema is ChecklistSweep:
+        return json.dumps({"items": []})
     raise AssertionError(call.schema)
 
 
@@ -137,6 +139,61 @@ async def test_chat_is_cited_and_persisted(api, fake_llm):
     assert "could not match" not in body["content"]
     msgs = (await api.get(f"/api/v1/contracts/{cid}/messages")).json()
     assert [m["role"] for m in msgs] == ["user", "assistant"]
+
+
+async def test_chat_negotiation_cites_top_findings_in_order(api, fake_llm):
+    fake_llm(_handler)
+    cid = (await _upload(api, party="Kumar Auto Components Private Limited")).json()["id"]
+    detail = (await api.get(f"/api/v1/contracts/{cid}")).json()
+    top = next(f for f in detail["findings"] if f["counts_toward_score"] and f["quote"])
+    r = (await api.post(f"/api/v1/contracts/{cid}/chat", json={"question": "What should I negotiate first?"})).json()
+    added = [c for c in r["citations"] if c.get("finding")]
+    assert added and added[0]["finding"] == top["title"] and added[0]["verified"] is True
+
+
+async def test_chat_enforceability_gets_the_legal_note(api, fake_llm):
+    fake_llm(_handler)
+    cid = (await _upload(api, party="Kumar Auto Components Private Limited")).json()["id"]
+
+    def answer(call):
+        if call.schema is ChatAnswer:
+            assert "REVIEW FINDINGS" in call.prompt and "Unlimited indemnity" in call.prompt
+            return json.dumps({"answer": "The Buyer must indemnify the Supplier without limit.", "found_in_contract": True,
+                               "citations": [{"quote": QUOTE, "segment_id": "S6"}]})
+        return _handler(call)
+    fake_llm(answer)
+    r = (await api.post(f"/api/v1/contracts/{cid}/chat", json={"question": "Is this indemnity enforceable?"})).json()
+    assert "Legal note" in r["content"] and "Indian Contract Act" in r["content"]
+
+
+async def test_multiple_photos_upload_as_one_contract(api, fake_llm):
+    import io
+
+    from PIL import Image
+
+    def jpg():
+        buf = io.BytesIO()
+        Image.new("RGB", (800, 1100), "white").save(buf, format="JPEG")
+        return buf.getvalue()
+
+    pages = SUPPLY_AGREEMENT.split("4. TERM AND TERMINATION")
+
+    def handler(call):
+        if call.schema.__name__ == "_OcrResult":
+            return json.dumps({"pages": [{"number": 1, "text": pages[0]},
+                                         {"number": 2, "text": "4. TERM AND TERMINATION" + pages[1]}]})
+        return _handler(call)
+    fake_llm(handler)
+    r = await api.post("/api/v1/contracts/upload", files=[("files", ("p1.jpg", jpg())), ("files", ("p2.jpg", jpg()))])
+    assert r.status_code == 202, r.text
+    assert r.json()["filename"] == "p1 (2 pages).pdf"
+    d = (await api.get(f"/api/v1/contracts/{r.json()['id']}")).json()
+    assert d["status"] == "analyzed" and d["ocr_used"] is True and d["page_count"] == 2
+    assert d["contract_type_label"] == "Supply agreement"
+    assert d["score_breakdown"]["contributions"] and d["score_breakdown"]["review"]["ocr_calls"] == 1
+
+    mixed = await api.post("/api/v1/contracts/upload", files=[("files", ("p1.jpg", jpg())), ("files", ("x.txt", b"hello"))])
+    assert mixed.status_code == 400
 
 
 async def test_chat_ai_outage_is_503_with_clear_message(api, fake_llm):

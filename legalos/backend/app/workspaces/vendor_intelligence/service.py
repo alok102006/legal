@@ -1,7 +1,7 @@
 """Vendor service: create / re-check / link vendors. Every read and write is scoped to the organisation."""
+import asyncio
 import dataclasses
 import logging
-import re
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.dependencies import RequestContext
 from app.shared.audit import log_event
 from app.shared.exceptions import BadRequestException, NotFoundException
@@ -18,12 +19,12 @@ from app.shared.india import identifiers as ids
 from app.workspaces.contract_intelligence.models import Contract
 from app.workspaces.legal_notice_center.models import NoticeCase
 from app.workspaces.vendor_intelligence import engine, registry
+from app.workspaces.vendor_intelligence.errors import AUTH, QUOTA, UNAVAILABLE
 from app.workspaces.vendor_intelligence.models import Vendor
 
 logger = logging.getLogger("legalos.vendors")
 NAME_MATCH_THRESHOLD = 85
 HISTORY_LIMIT = 20
-_UDYAM_LOOSE = re.compile(r"^UDYAM-?([A-Z]{2})-?(\d{2})-?(\d{7})$")
 
 
 def _clean(v: Optional[str]) -> Optional[str]:
@@ -35,8 +36,14 @@ def _registry_dict(r: engine.RegistryResult) -> dict:
     return {k: v for k, v in dataclasses.asdict(r).items() if v not in (None, "")}
 
 
-async def _apply_assessment(v: Vendor) -> None:
-    reg = await registry.lookup(v.gstin)
+async def _apply_assessment(v: Vendor, force: bool = False) -> engine.RegistryResult:
+    """Looks the supplier up (cache first, unless `force`) and stores the verdict on it. Returns the registry result."""
+    reg = await registry.lookup(v.gstin, force=force)
+    _apply_registry(v, reg)
+    return reg
+
+
+def _apply_registry(v: Vendor, reg: engine.RegistryResult) -> None:
     a = engine.assess(v.name, v.gstin, v.pan, v.state_code, v.udyam_number, v.msme_category, reg)
     now = datetime.now(timezone.utc)
     prior = list((v.registry_data or {}).get("history") or [])
@@ -177,14 +184,65 @@ async def update_vendor(session: AsyncSession, ctx: RequestContext, vendor_id: u
     return v
 
 
-async def recheck(session: AsyncSession, ctx: RequestContext, vendor_id: uuid.UUID) -> Vendor:
+async def recheck(session: AsyncSession, ctx: RequestContext, vendor_id: uuid.UUID, refresh: bool = False) -> Vendor:
+    """Re-runs the checks. A registry answer fetched in the last 24 h is reused; `refresh=True` asks (and pays) again."""
     v = await get_vendor(session, ctx, vendor_id)
-    await _apply_assessment(v)
+    await _apply_assessment(v, force=refresh)
     await log_event(session, organization_id=ctx.organization_id, user_id=ctx.user_id, action="vendor.rechecked",
-                    entity_type="vendor", entity_id=v.id, meta={"risk": v.risk_level})
+                    entity_type="vendor", entity_id=v.id, meta={"risk": v.risk_level, "refresh": refresh})
     await session.commit()
     await session.refresh(v)
     return v
+
+
+RECHECK_CONCURRENCY = 4
+
+
+async def recheck_all(session: AsyncSession, ctx: RequestContext) -> Dict[str, Any]:
+    """Re-checks every saved supplier of the organisation. Cached registry answers are free; at most
+    `registry_recheck_max_live` paid lookups are made per call and the rest are reported as deferred (they keep their
+    previous verdict untouched). Lookups run a few at a time; nothing is saved until all have answered."""
+    vendors = await list_vendors(session, ctx)
+    budget = max(0, settings.registry_recheck_max_live)
+    plan: List[Vendor] = []
+    deferred: List[Vendor] = []
+    for v in vendors:
+        if registry.needs_live_call(v.gstin):
+            if budget <= 0:
+                deferred.append(v)
+                continue
+            budget -= 1
+        plan.append(v)
+
+    gate = asyncio.Semaphore(RECHECK_CONCURRENCY)
+
+    async def look(v: Vendor) -> engine.RegistryResult:
+        async with gate:
+            return await registry.lookup(v.gstin)
+
+    results = await asyncio.gather(*(look(v) for v in plan))
+    changed, live, from_cache, failed = [], 0, 0, 0
+    provider = registry.active_provider()
+    for v, reg in zip(plan, results):
+        before = v.risk_level
+        if reg.source == "unavailable" and provider and reg.error_kind in (AUTH, QUOTA, UNAVAILABLE):
+            failed += 1                       # keep the earlier verdict: a failed lookup must not overwrite a good one
+            continue
+        _apply_registry(v, reg)
+        if reg.cached:
+            from_cache += 1
+        elif reg.source == "live":
+            live += 1
+        if v.risk_level != before:
+            changed.append({"id": v.id, "name": v.name, "previous": before, "current": v.risk_level})
+    await log_event(session, organization_id=ctx.organization_id, user_id=ctx.user_id, action="vendor.rechecked_all",
+                    entity_type="vendor", meta={"total": len(vendors), "live": live, "cached": from_cache,
+                                                "failed": failed, "deferred": len(deferred), "changed": len(changed)})
+    await session.commit()
+    return {"total": len(vendors), "rechecked": len(plan) - failed, "live_lookups": live, "from_cache": from_cache,
+            "failed": failed, "deferred": len(deferred), "deferred_names": [v.name for v in deferred][:20],
+            "changed": changed, "registry_mode": registry.registry_mode()[0],
+            "max_live_per_run": settings.registry_recheck_max_live}
 
 
 async def delete_vendor(session: AsyncSession, ctx: RequestContext, vendor_id: uuid.UUID) -> None:
@@ -204,35 +262,42 @@ async def quick_check(data: dict) -> dict:
             "registry": _registry_dict(reg), "registry_source": reg.source}
 
 
-def classify_identifier(raw: str) -> Tuple[str, str]:
-    """GSTIN, PAN or Udyam number -> (kind, canonical value). Anything else is treated as a (malformed) GSTIN so the
-    offline check can say exactly what is wrong with it."""
-    v = ids.normalize(raw)
-    if ids.PAN_RE.match(v):
-        return "pan", v
-    m = _UDYAM_LOOSE.match(v)
-    if m:
-        return "udyam", f"UDYAM-{m.group(1)}-{m.group(2)}-{m.group(3)}"
-    if v.startswith("UDYAM"):
-        return "udyam", v
-    return "gstin", v
+def classify_identifier(raw: str, kind: Optional[str] = None) -> Tuple[str, str]:
+    """Any supported number -> (kind, canonical value). `kind` forces the reading (needed for an alphanumeric IEC,
+    which looks like a PAN). Unrecognised input is treated as a (malformed) GSTIN so the offline check can say exactly
+    what is wrong with it."""
+    if kind:
+        return kind, {"udyam": ids.normalize_udyam, "pf": ids.normalize_pf}.get(kind, ids.normalize)(raw)
+    return ids.identify(raw)
+
+
+_SAVED_COLUMN = {"gstin": Vendor.gstin, "pan": Vendor.pan, "udyam": Vendor.udyam_number}
 
 
 async def check_identifier(session: AsyncSession, ctx: RequestContext, raw: str, name: Optional[str] = None,
-                           state_code: Optional[str] = None) -> Dict[str, Any]:
-    """The check desk: verify one number (no saving). Offline checks always run; the live registry is asked for GSTINs."""
+                           state_code: Optional[str] = None, kind: Optional[str] = None) -> Dict[str, Any]:
+    """The check desk: verify one number (no saving). Offline checks always run; the live registry is asked for GSTINs
+    (and answers come from the 24 h cache when possible). CIN, TAN, LLPIN, IFSC, IEC, FSSAI, ESIC and PF numbers get
+    format checks only: no public registry can be asked for them, and the answer says where to confirm."""
     if not ids.normalize(raw):
-        raise BadRequestException("Enter a GSTIN, PAN or Udyam number.")
+        raise BadRequestException("Enter a GSTIN, PAN, Udyam, CIN, TAN, IFSC or other business number.")
     if state_code and state_code not in ids.STATE_CODES:
         raise BadRequestException("Unknown state code.")
-    kind, ident = classify_identifier(raw)
-    reg = await registry.lookup(ident if kind == "gstin" else None)
-    a = engine.assess((name or "").strip(), ident if kind == "gstin" else None, ident if kind == "pan" else None, state_code,
-                      ident if kind == "udyam" else None, None, reg)
-    mode, provider = registry.registry_mode(reg)
-
-    col = {"gstin": Vendor.gstin, "pan": Vendor.pan, "udyam": Vendor.udyam_number}[kind]
-    saved = (await session.execute(select(Vendor).where(Vendor.organization_id == ctx.organization_id, col == ident).limit(1))).scalars().first()
+    if kind and kind not in ids.KINDS:
+        raise BadRequestException(f"Unknown number type '{kind}'.")
+    kind, ident = classify_identifier(raw, kind)
+    if kind in _SAVED_COLUMN:
+        reg = await registry.lookup(ident if kind == "gstin" else None)
+        a = engine.assess((name or "").strip(), ident if kind == "gstin" else None, ident if kind == "pan" else None, state_code,
+                          ident if kind == "udyam" else None, None, reg)
+        mode, provider = registry.registry_mode(reg)
+        col = _SAVED_COLUMN[kind]
+        saved = (await session.execute(select(Vendor).where(Vendor.organization_id == ctx.organization_id, col == ident).limit(1))).scalars().first()
+    else:
+        reg = engine.RegistryResult(source="unavailable", error_kind="not_connected",
+                                    message="No public registry can be queried for this type of number.")
+        a = engine.assess_identifier(kind, ident, (name or "").strip() or None)
+        mode, provider, saved = "offline", None, None
     names = [name or "", reg.legal_name or "", reg.trade_name or ""] + (_vendor_names(saved) if saved else [])
     return {
         "kind": kind, "identifier": ident, "suggested_name": reg.legal_name if reg.source != "unavailable" else None,
@@ -240,6 +305,7 @@ async def check_identifier(session: AsyncSession, ctx: RequestContext, raw: str,
         "checks": [dataclasses.asdict(c) for c in a.checks],
         "registry": _registry_dict(reg), "registry_source": reg.source, "registry_mode": mode, "registry_provider": provider,
         "state_name": a.derived.get("state_name"), "pan": a.derived.get("pan"), "holder_type": a.derived.get("holder_type"),
+        "details": {k: v for k, v in a.derived.items() if kind not in _SAVED_COLUMN},
         "saved_vendor": to_brief(saved) if saved else None,
         "contracts": await linked_contracts(session, ctx.organization_id, names),
         "notices": await linked_notices(session, ctx.organization_id, names, ident if kind != "udyam" else None),

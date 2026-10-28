@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users } from 'lucide-react';
+import { RefreshCw, Users } from 'lucide-react';
+import { toast } from 'sonner';
 import { toFriendlyError } from '@/api/client';
-import { ErrorState, Skeleton } from '@/ui/primitives';
+import { Button, ErrorState, Skeleton } from '@/ui/primitives';
 import { SidePanel, closeSidePanel } from '@/ui/sidepanel';
 import { cn } from '@/lib/utils';
-import { useVendors, type VendorBrief } from './api';
+import { useRecheckAll, useVendors, type VendorBrief } from './api';
 import { VendorRiskBadge, ago } from './components';
 
 const FILTERS = [
@@ -33,12 +34,28 @@ const SupplierRow: React.FC<{ v: VendorBrief; active: boolean }> = ({ v, active 
 /** The saved suppliers, tucked into the right-hand panel. Shared by the check desk and the supplier page. */
 export const SuppliersPanel: React.FC<{ activeId?: string }> = ({ activeId }) => {
   const vendors = useVendors();
+  const recheckAll = useRecheckAll();
   const [filter, setFilter] = useState<FilterValue>('all');
   const data = vendors.data ?? [];
   const list = useMemo(() => {
     const f = FILTERS.find((x) => x.value === filter) ?? FILTERS[0];
     return data.filter(f.test);
   }, [data, filter]);
+
+  const runRecheckAll = () => recheckAll.mutate(undefined, {
+    onSuccess: (r) => {
+      const bits = [
+        `${r.rechecked} of ${r.total} re-checked`,
+        r.live_lookups ? `${r.live_lookups} live` : null,
+        r.from_cache ? `${r.from_cache} from cache` : null,
+        r.failed ? `${r.failed} could not be reached (earlier verdict kept)` : null,
+        r.deferred ? `${r.deferred} left for next time (limit ${r.max_live_per_run} live lookups per run)` : null,
+      ].filter(Boolean).join(' · ');
+      const changed = r.changed.length ? `Changed: ${r.changed.map((c) => `${c.name} (${c.previous} to ${c.current})`).join('; ')}` : 'No verdict changed.';
+      toast.success(bits, { description: changed, duration: 8000 });
+    },
+    onError: (e) => toast.error(toFriendlyError(e).message),
+  });
 
   return (
     <SidePanel storageKey="vendors-saved" title="Your suppliers" icon={Users} count={vendors.data?.length}>
@@ -49,10 +66,14 @@ export const SuppliersPanel: React.FC<{ activeId?: string }> = ({ activeId }) =>
       )}
       {vendors.data && vendors.data.length > 0 && (
         <>
+          <div className="mb-3 px-1">
+            <Button size="sm" variant="secondary" className="w-full" loading={recheckAll.isPending} onClick={runRecheckAll} icon={<RefreshCw className="h-4 w-4" aria-hidden />}>Re-check all</Button>
+            <p className="mt-1.5 text-xs text-ink-3">Answers fetched in the last 24 hours are reused, so this does not pay for the same lookup twice.</p>
+          </div>
           <div className="mb-2 flex flex-wrap gap-1.5 px-1" role="group" aria-label="Filter suppliers">
             {FILTERS.map((f) => (
               <button key={f.value} type="button" onClick={() => setFilter(f.value)} aria-pressed={filter === f.value}
-                className={cn('rounded-full border px-2.5 py-1 text-xs font-medium transition-colors', filter === f.value ? 'border-primary bg-primary text-primary-on' : 'border-line-strong text-ink-2 hover:bg-surface-2')}>
+                className={cn('rounded-full border border-line-strong px-2.5 py-1 text-xs font-medium transition-colors', filter === f.value ? 'border-primary bg-primary text-primary-on' : 'bg-surface text-ink-2 hover:bg-surface-2')}>
                 {f.label}<span className={cn('ml-1', filter === f.value ? 'opacity-70' : 'text-ink-3')}>{data.filter(f.test).length}</span>
               </button>
             ))}

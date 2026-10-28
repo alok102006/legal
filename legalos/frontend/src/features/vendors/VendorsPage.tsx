@@ -6,8 +6,8 @@ import { toFriendlyError } from '@/api/client';
 import { Button, ErrorState, Input, Skeleton } from '@/ui/primitives';
 import { cn, timeAgo } from '@/lib/utils';
 import { useCheckIdentifier, useCreateVendor, useVendors, type CheckResult } from './api';
-import { IdentifierStrip, VerificationCard, viewFromResult } from './components';
-import { clean, parseIdentifier } from './identifiers';
+import { IdentifierStrip, RiskRules, VerificationCard, viewFromResult } from './components';
+import { clean, parseIdentifier, SAVEABLE_KINDS } from './identifiers';
 import { SuppliersPanel } from './SuppliersPanel';
 
 /* ------------------------------------------------------------------ save from the desk */
@@ -19,8 +19,9 @@ const SaveSupplier: React.FC<{ result: CheckResult; fallbackName: string; savedI
   const [name, setName] = useState(known ?? '');
   const id = savedId ?? result.saved_vendor?.id ?? null;
 
+  if (!SAVEABLE_KINDS.includes(result.kind)) return null;   // CIN, IFSC ... have no supplier column to save into
   if (id) {
-    return <Link to={`/vendors/${id}`} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-primary-ink hover:bg-primary-soft"><BadgeCheck className="h-4 w-4" aria-hidden />Saved - open supplier<ArrowRight className="h-4 w-4" aria-hidden /></Link>;
+    return <Link to={`/vendors/${id}`} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-ink hover:bg-surface-2"><BadgeCheck className="h-4 w-4" aria-hidden />Saved - open supplier<ArrowRight className="h-4 w-4" aria-hidden /></Link>;
   }
   const save = (n: string) => {
     const payload = result.kind === 'gstin' ? { name: n, gstin: result.identifier } : result.kind === 'pan' ? { name: n, pan: result.identifier } : { name: n, udyam_number: result.identifier };
@@ -64,7 +65,9 @@ export const VendorsPage: React.FC = () => {
     const v = clean(value);
     if (!v) { inputRef.current?.focus(); return; }
     setSavedId(null);
-    check.mutate({ identifier: v, name: nameParam || undefined });
+    // an LLPIN is written AAA-1234; the hyphen is part of the number, so put it back after cleaning
+    const llpin = /^[A-Z]{3}\d{4}$/.test(v);
+    check.mutate({ identifier: llpin ? `${v.slice(0, 3)}-${v.slice(3)}` : v, name: nameParam || undefined, kind: llpin ? 'llpin' : undefined });
   };
 
   return (
@@ -74,7 +77,7 @@ export const VendorsPage: React.FC = () => {
         <div className={cn('mx-auto w-full max-w-5xl px-6 pb-20 transition-[padding] duration-300 sm:px-10', hasResult ? 'pt-16' : 'pt-[10vh]')}>
           <section aria-labelledby="desk-title" className="text-center">
             <h1 id="desk-title" className="font-display text-4xl leading-tight text-ink sm:text-5xl">Check a supplier before you pay</h1>
-            <p className="mx-auto mt-3 max-w-md text-sm text-ink-2 sm:text-base">Paste a GSTIN, PAN or Udyam number from the invoice.</p>
+            <p className="mx-auto mt-3 max-w-md text-sm text-ink-2 sm:text-base">Paste a GSTIN, PAN or Udyam number from the invoice. CIN, TAN, IFSC and other business numbers are read too.</p>
 
             {nameParam && (
               <p className="mx-auto mt-4 inline-flex max-w-full items-center gap-2 rounded-full bg-surface-2 px-3 py-1.5 text-sm text-ink-2">
@@ -85,8 +88,8 @@ export const VendorsPage: React.FC = () => {
 
             <form className="btn-quiet relative mx-auto mt-8 max-w-2xl rounded-2xl border border-line-strong bg-surface transition-shadow focus-within:ring-4 focus-within:ring-primary/15" onSubmit={(e) => { e.preventDefault(); submit(); }} role="search">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-ink-3" aria-hidden />
-              <Input ref={inputRef} value={raw} onChange={(e) => setRaw(e.target.value.toUpperCase())} aria-label="GSTIN, PAN or Udyam number"
-                placeholder="GSTIN, PAN or Udyam number" autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={40}
+              <Input ref={inputRef} value={raw} onChange={(e) => setRaw(e.target.value.toUpperCase())} aria-label="GSTIN, PAN, Udyam, CIN or other business number"
+                placeholder="GSTIN, PAN, Udyam, CIN, IFSC ..." autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={40}
                 className="h-14 rounded-2xl border-0 bg-transparent pl-12 pr-16 font-mono text-lg tracking-wider !shadow-none placeholder:font-sans placeholder:tracking-normal sm:pr-32" />
               <Button type="submit" size="md" loading={check.isPending} disabled={!clean(raw)} aria-label="Check"
                 className="absolute right-2 top-1/2 -translate-y-1/2 max-sm:w-10 max-sm:!min-h-0 max-sm:px-0 sm:px-5" icon={<CornerDownLeft className="h-4 w-4 sm:hidden" aria-hidden />}>
@@ -115,6 +118,7 @@ export const VendorsPage: React.FC = () => {
           </div>
 
           {!hasResult && <DeskBelow />}
+          <RiskRules />
         </div>
       </div>
     </div>
@@ -154,7 +158,7 @@ const DeskBelow: React.FC = () => {
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {recent.map((v) => (
               <li key={v.id}>
-                <Link to={`/vendors/${v.id}`} className="block rounded-2xl bg-surface-2 p-4 transition-colors hover:bg-surface-2/70">
+                <Link to={`/vendors/${v.id}`} className="block rounded-2xl bg-surface-2 p-4 transition-shadow hover:shadow-raised">
                   <span className="block truncate text-[15px] font-medium text-ink">{v.name}</span>
                   <span className="mt-0.5 block truncate font-mono text-xs text-ink-3">{v.gstin ?? v.pan ?? v.udyam_number ?? 'No number'}</span>
                   <span className="mt-3 block text-xs text-ink-2">{v.last_checked_at ? `Checked ${timeAgo(v.last_checked_at)}` : 'Not checked yet'}</span>

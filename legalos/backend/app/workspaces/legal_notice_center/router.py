@@ -24,12 +24,15 @@ async def list_notices(db: AsyncSession = Depends(get_db_session), ctx: RequestC
 @router.post("/upload", response_model=schemas.CaseListItem, status_code=202)
 async def upload_notice(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),
+    files: List[UploadFile] = File([], description="Several page photos of one notice, in page order."),
     received_date: Optional[date] = Form(None),
     db: AsyncSession = Depends(get_db_session),
     ctx: RequestContext = Depends(require_writer),
 ):
-    case = await service.create_from_file(db, ctx, await file.read(), file.filename or "notice.txt", received_date)
+    uploads = ([file] if file else []) + list(files)
+    payload = [(await u.read(), u.filename or "notice.txt") for u in uploads]
+    case = await service.create_from_files(db, ctx, payload, received_date)
     background_tasks.add_task(service.run_analysis, case.id)
     return _item(case)
 

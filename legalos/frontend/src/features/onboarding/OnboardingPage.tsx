@@ -103,20 +103,20 @@ export const OnboardingPage: React.FC = () => {
   if (isError) return <div className="mx-auto max-w-lg p-6"><ErrorState message="We couldn't load your company profile." onRetry={() => refetch()} /></div>;
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-2xl flex-col px-4 py-8 sm:py-12">
-      <h1 className="text-2xl font-bold text-ink">Tell us about your company</h1>
-      <p className="mt-1 text-sm text-ink-2">
+    <div className="mx-auto flex min-h-screen max-w-2xl flex-col px-4 py-10 sm:py-16">
+      <h1 className="font-display text-4xl leading-tight text-ink sm:text-[2.6rem]">Tell us about your company</h1>
+      <p className="mt-3 text-[15px] leading-7 text-ink-2">
         This decides which compliance deadlines and contract rules apply to you. You can change it later in Settings.
       </p>
 
-      <div className="my-6" aria-label={`Step ${step} of 3`}>
+      <div className="my-8" aria-label={`Step ${step} of 3`}>
         <div className="flex gap-2" aria-hidden>
           {[1, 2, 3].map((n) => <div key={n} className={`h-1.5 flex-1 rounded-full ${n <= step ? 'bg-primary' : 'bg-surface-2'}`} />)}
         </div>
-        <p className="mt-2 text-xs font-medium text-ink-3">Step {step} of 3 · {['About your company', 'Size and registrations', 'Review'][step - 1]}</p>
+        <p className="mt-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">Step {step} of 3 · {['About your company', 'Size and registrations', 'Review'][step - 1]}</p>
       </div>
 
-      <Card className="space-y-5">
+      <Card className="space-y-5 p-6 sm:p-7">
         {error && <ErrorState title="Couldn't save" message={error} />}
 
         {step === 1 && (
@@ -222,7 +222,7 @@ export const OnboardingPage: React.FC = () => {
               <legend className="mb-2 text-sm font-medium text-ink">Which registrations does your company have?</legend>
               <div className="grid gap-2 sm:grid-cols-2">
                 {REGISTRATIONS.map((r) => (
-                  <label key={r.key} className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg border border-line p-3 hover:bg-surface-2">
+                  <label key={r.key} className={`flex min-h-[44px] cursor-pointer items-start gap-3 rounded-xl border bg-surface p-3 transition-colors hover:bg-surface ${form.registrations[r.key] ? 'border-primary' : 'border-line-strong'}`}>
                     <input type="checkbox" className="mt-1 h-4 w-4 accent-[var(--primary)]" checked={!!form.registrations[r.key]}
                       onChange={(e) => set('registrations', { ...form.registrations, [r.key]: e.target.checked })} />
                     <span>

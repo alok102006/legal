@@ -4,25 +4,73 @@
       "key": "handbook",
       "title": "Employee Handbook",
       "collection": "HR",
+      "doc_type": "HR policy",
+      "summary": ["Working hours, overtime, notice periods, paid leave, confidentiality and grievances for all staff."],
       "text": "EMPLOYEE HANDBOOK - KULKARNI TEXTILES PVT LTD\n\n1. Working hours\nThe standard working week is 48 hours across six days. Overtime is paid at twice the normal rate.\n\n2. Notice period\nManagers must give 60 days written notice before resigning. All other staff must give 30 days notice.\nDuring probation of six months, either side may end employment with 7 days notice.\n\n3. Leave\nEmployees are entitled to 24 days of paid leave per calendar year. Unused leave up to 12 days may be carried forward.\n\n4. Confidentiality\nEmployees must not disclose pricing, customer lists or dyeing formulas during or after employment.\n\n5. Grievances\nComplaints go to the HR manager in writing; a reply is due within 15 working days.\n"
     },
     {
       "key": "leave_hi",
       "title": "छुट्टी नीति",
       "collection": "HR",
+      "doc_type": "HR policy",
+      "summary": ["Hindi leave policy: paid leave, sick leave with doctor certificate, maternity leave."],
       "text": "छुट्टी नीति - कुलकर्णी टेक्सटाइल्स\n\n1. सवेतन अवकाश\nसभी कर्मचारियों को प्रति कैलेंडर वर्ष 24 दिन का सवेतन अवकाश मिलेगा। अधिकतम 12 दिन की अप्रयुक्त छुट्टी अगले वर्ष में ले जाई जा सकती है।\n\n2. बीमारी अवकाश\nप्रति वर्ष 7 दिन का बीमारी अवकाश मिलेगा। तीन दिन से अधिक की बीमारी के लिए डॉक्टर का प्रमाणपत्र आवश्यक है।\n\n3. मातृत्व अवकाश\nमातृत्व अवकाश 26 सप्ताह का होगा, जैसा कि कानून में निर्धारित है।\n"
     },
     {
       "key": "fire",
       "title": "Fire Safety Certificate",
       "collection": "Licences",
+      "doc_type": "Licence or certificate",
+      "summary": ["Fire safety certificate for the Sachin GIDC plant, valid until 31 December 2026."],
       "text": "FIRE SAFETY CERTIFICATE\nCertificate No. FS/SRT/2024/1187\nIssued to Kulkarni Textiles Pvt Ltd, Plot 14, Sachin GIDC, Surat.\nThis certificate is valid until 31 December 2026 and must be renewed before that date.\nThe premises were inspected on 12 January 2026 and found to comply with the Gujarat Fire Prevention and Life Safety Measures Act.\nRenewal applications must be filed at least 45 days before expiry with the Surat Municipal Corporation fire office.\n"
     },
     {
       "key": "prices",
       "title": "Supplier price list 2026",
       "collection": "Finance",
+      "doc_type": "Price list",
+      "summary": ["Rates and payment terms for yarn, dyes and diesel from regular suppliers."],
       "text": "SUPPLIER PRICE LIST - APRIL 2026\n\nItem | Supplier | Rate | Payment terms\nCotton yarn 40s | Shree Ganesh Spinners | Rs 285 per kg | 30 days\nPolyester yarn 150D | Surat Filaments Ltd | Rs 112 per kg | 45 days\nReactive dyes (black) | Colourtex Industries | Rs 640 per kg | advance\nDiesel for boilers | HPCL dealer Sachin | Rs 92 per litre | cash\n\nNote: rates exclude GST at 5% on yarn and 18% on dyes.\n"
+    },
+    {
+      "key": "dealer_prices",
+      "title": "Dealer price list FY 2026-27",
+      "collection": "Finance",
+      "doc_type": "Price list",
+      "summary": ["Dealer and OEM price list by SKU for fasteners, bearings, hydraulics, pipes and packaging, with MOQ and GST rate."],
+      "text": "DEALER PRICE LIST - FY 2026-27\nPrice List No. DPL/2026-27/01\n\nPRODUCT PRICE TABLE\n\nSKU | Description | Unit | Price (Rs) | MOQ | GST Rate\nSIP-FAS-001 | Hex bolt M8 x 40 mm, zinc plated | per 100 pcs | 460 | 10 boxes | 18%\nSIP-FAS-002 | Hex bolt M10 x 60 mm, zinc plated | per 100 pcs | 820 | 10 boxes | 18%\nSIP-FAS-003 | Hex nut M10, Grade 8 | per 100 pcs | 310 | 20 boxes | 18%\nSIP-FAS-004 | Spring washer M10, SS 304 | per 100 pcs | 275 | 20 boxes | 18%\nSIP-BRG-101 | Ball bearing 6205-2RS | per piece | 96 | 100 pcs | 18%\nSIP-BRG-102 | Ball bearing 6308-2RS | per piece | 285 | 50 pcs | 18%\nSIP-BRG-103 | Pillow block bearing UCP 208 | per piece | 640 | 25 pcs | 18%\nSIP-HYD-201 | Hydraulic hose 1/2 inch, 1 metre | per piece | 1,150 | 20 pcs | 18%\nSIP-HYD-202 | Hydraulic quick coupling 3/8 inch | per piece | 385 | 50 pcs | 18%\nSIP-PIP-301 | MS seamless pipe 25 NB, 6 m | per length | 3,480 | 20 lengths | 18%\nSIP-PIP-302 | HDPE pipe 63 mm, 6 m | per length | 1,360 | 50 lengths | 18%\nSIP-PKG-401 | Corrugated carton 5-ply | per 100 pcs | 8,400 | 5 bundles | 18%\nSIP-PKG-402 | HDPE woven sack 50 kg | per 100 pcs | 6,250 | 10 bundles | 5%\nSIP-LUB-601 | Industrial grease EP-2, 18 kg pail | per pail | 3,950 | 4 pails | 18%\nSIP-LUB-602 | Hydraulic oil ISO VG 68, 210 litre drum | per drum | 21,800 | 2 drums | 18%\n\nNOTES AND CONDITIONS\n\n1. Validity. This price list is valid for orders received up to 31 March 2027.\n\n2. Payment. Dealers pay within 45 days of invoice. Interest at 18% per annum is charged on overdue amounts.\n"
+    },
+    {
+      "key": "gst",
+      "title": "GST compliance calendar",
+      "collection": "Finance",
+      "doc_type": "Compliance procedure",
+      "summary": ["Monthly GST return filing dates (GSTR-1, GSTR-3B), late fees and who files them."],
+      "text": "GST COMPLIANCE CALENDAR - SHREEJI INDUSTRIAL PRODUCTS\n\n1. Returns\n1.1 GSTR-1 (outward supplies) for each month is filed by the 11th of the following month.\n1.2 GSTR-3B (summary return with tax payment) for each month is filed by the 20th of the following month.\n1.3 The annual return GSTR-9 is filed by 31 December following the end of the financial year.\n\n2. Late fees and interest\n2.1 A late fee of Rs 50 per day (Rs 20 per day for nil returns) applies to a delayed GSTR-3B.\n2.2 Interest at 18% per annum is payable on tax paid after the due date.\n\n3. Responsibility\n3.1 The accounts executive prepares the returns and the Finance Controller approves them before filing.\n"
+    },
+    {
+      "key": "board",
+      "title": "Board resolution - bank account authority",
+      "collection": "Legal",
+      "doc_type": "Board resolution",
+      "summary": ["Board resolution naming who may operate the HDFC current account and the joint-signature limit."],
+      "text": "CERTIFIED TRUE COPY OF THE RESOLUTION PASSED AT THE MEETING OF THE BOARD OF DIRECTORS HELD ON 12 August 2026\n\nRESOLVED THAT the current account No. 50200012345678 with HDFC Bank Limited, Alkapuri branch, Vadodara be operated by Mr. Rajesh Mehta, Director, and Ms. Kavita Shah, Chief Financial Officer.\n\nRESOLVED FURTHER THAT any single payment above ₹2,40,000 shall require the signatures of both authorised signatories, and payments up to that amount may be signed by either of them alone.\n\nRESOLVED FURTHER THAT the Company Secretary be authorised to file Form MGT-14 with the Registrar of Companies within 30 days of this resolution.\n"
+    },
+    {
+      "key": "safety_hi",
+      "title": "फैक्टरी सुरक्षा नियमावली",
+      "collection": "Operations",
+      "doc_type": "Safety manual",
+      "summary": ["Factory safety manual in Hindi: PPE rules, fire drills, accident reporting timelines and first aid."],
+      "text": "फैक्टरी सुरक्षा नियमावली\nदस्तावेज़ संख्या: EHS-MAN-001\n\n1. व्यक्तिगत सुरक्षा उपकरण (PPE)\n\n1.1 उत्पादन क्षेत्र में प्रवेश करने से पहले प्रत्येक कर्मचारी को निम्नलिखित PPE पहनना अनिवार्य है:\n\nक्षेत्र / कार्य | अनिवार्य PPE\nसभी उत्पादन क्षेत्र | सुरक्षा जूते, सुरक्षा हेलमेट, कारखाने की वर्दी\nवेल्डिंग और कटिंग | वेल्डिंग हेलमेट, चमड़े के दस्ताने, एप्रन, फेस शील्ड\nपेंट शॉप और रसायन क्षेत्र | रासायनिक-रोधी दस्ताने, गैस मास्क, गॉगल्स\n\n1.2 सुरक्षा जूते प्रत्येक 12 माह में और हेलमेट प्रत्येक 36 माह में बदले जाते हैं।\n\n2. फायर ड्रिल\n\n2.1 फायर ड्रिल प्रत्येक तीन माह में कम से कम एक बार की जाएगी। पूरी निकासी 5 मिनट के भीतर पूरी होनी चाहिए।\n\n3. दुर्घटना की सूचना\n\n3.1 पर्यवेक्षक दुर्घटना की सूचना सुरक्षा अधिकारी को तत्काल देगा और दुर्घटना रिपोर्ट फॉर्म 24 घंटे के भीतर भरकर जमा करेगा।\n\n3.2 मृत्यु या गंभीर दुर्घटना की सूचना फैक्टरी निरीक्षक को लिखित रूप में 12 घंटे के भीतर दी जाएगी।\n"
+    },
+    {
+      "key": "insurance",
+      "title": "Fire and burglary insurance schedule",
+      "collection": "Legal",
+      "doc_type": "Insurance policy",
+      "summary": ["Fire and special perils plus burglary insurance for the Vadodara plant: period, sums insured, claim intimation."],
+      "text": "POLICY SCHEDULE\nStandard Fire and Special Perils Policy with Burglary Cover\n\nPolicy Number: 2026/FSP/VAD/0045871\nDate of Issue: 8 January 2026\n\n1. PERIOD OF INSURANCE\nFrom 10 January 2026 to midnight of 9 January 2027. The policy will lapse on 9 January 2027 and will not be renewed automatically.\n\n2. SUM INSURED\n2.1 Building: Rs 3,50,00,000\n2.2 Plant and machinery: Rs 2,80,00,000\n2.3 Stock: Rs 1,20,00,000\nTotal sum insured under Section I: Rs 7,50,00,000.\n\n3. CLAIMS\n3.1 In the event of any loss or damage, the Insured shall give written notice to the Insurer within forty-eight (48) hours of the occurrence.\n3.2 In case of burglary, the police must be informed and a copy of the FIR sent to the Insurer.\n\n4. DEDUCTIBLES\n4.1 Fire claims: 5% of the claim amount, subject to a minimum of Rs 25,000.\n4.2 Burglary claims: Rs 10,000 for each claim.\n"
     }
   ],
   "questions": [
@@ -41,6 +89,29 @@
     {"q": "What is the rate for polyester yarn?", "doc": "prices", "expect": "Rs 112 per kg"},
     {"q": "payment terms for Colourtex", "doc": "prices", "expect": "advance"},
     {"q": "GST on dyes", "doc": "prices", "expect": "18%"},
-    {"q": "diesel price per litre", "doc": "prices", "expect": "Rs 92"}
+    {"q": "diesel price per litre", "doc": "prices", "expect": "Rs 92"},
+
+    {"q": "price of SIP-FAS-003", "doc": "dealer_prices", "expect": "SIP-FAS-003 | Hex nut M10", "tags": ["table", "exact"]},
+    {"q": "minimum order quantity for SIP-BRG-102", "doc": "dealer_prices", "expect": "SIP-BRG-102 | Ball bearing 6308-2RS", "tags": ["table", "exact"]},
+    {"q": "which item costs 21,800 rupees?", "doc": "dealer_prices", "expect": "21,800", "tags": ["table", "exact"]},
+    {"q": "When is GSTR-3B due?", "doc": "gst", "expect": "20th of the following month", "tags": ["exact"]},
+    {"q": "late fee for delayed GSTR-3B", "doc": "gst", "expect": "Rs 50 per day", "tags": ["exact"]},
+    {"q": "who must sign a payment above ₹2,40,000?", "doc": "board", "expect": "signatures of both authorised signatories", "tags": ["exact"]},
+    {"q": "which bank account is 50200012345678?", "doc": "board", "expect": "50200012345678", "tags": ["exact"]},
+    {"q": "what did the board decide on 12/08/2026?", "doc": "board", "expect": "12 August 2026", "tags": ["exact", "date"]},
+    {"q": "policy number 2026/FSP/VAD/0045871 period of insurance", "doc": "insurance", "expect": "9 January 2027", "tags": ["exact"]},
+    {"q": "what does clause 4.2 of the insurance schedule say?", "doc": "insurance", "expect": "Burglary claims: Rs 10,000", "tags": ["exact", "section"]},
+    {"q": "accident report within how many hours?", "doc": "safety_hi", "expect": "24 घंटे", "tags": ["routing", "cross-lingual"]},
+    {"q": "दुर्घटना रिपोर्ट कितने घंटे में जमा करनी है?", "doc": "safety_hi", "expect": "24 घंटे", "tags": ["hindi"]},
+    {"q": "safety shoes kitne mahine mein badle jaate hain?", "doc": "safety_hi", "expect": "12 माह", "tags": ["hinglish"]},
+    {"q": "welding ke liye kaunsa PPE chahiye?", "doc": "safety_hi", "expect": "वेल्डिंग और कटिंग | वेल्डिंग हेलमेट", "tags": ["hinglish", "table"]},
+    {"q": "and for other staff?", "history": "USER: What notice period do managers have?\nASSISTANT: Managers must give 60 days written notice.",
+     "standalone": "What notice period must other staff give?", "doc": "handbook", "expect": "30 days notice", "tags": ["follow-up"]},
+    {"q": "What is the overtime rate and how many leave days can be carried forward?", "tags": ["multi-part"],
+     "sub": ["What is the overtime rate?", "How many leave days can be carried forward?"],
+     "expect_all": [{"doc": "handbook", "expect": "twice the normal rate"}, {"doc": "handbook", "expect": "12 days"}]},
+    {"q": "When does the fire certificate expire and when does the insurance policy lapse?", "tags": ["multi-part", "multi-doc"],
+     "sub": ["When does the fire certificate expire?", "When does the insurance policy lapse?"],
+     "expect_all": [{"doc": "fire", "expect": "31 December 2026"}, {"doc": "insurance", "expect": "9 January 2027"}]}
   ]
 }

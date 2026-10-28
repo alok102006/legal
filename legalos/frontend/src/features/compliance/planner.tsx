@@ -95,10 +95,10 @@ export const MonthStrip: React.FC<{
     <div role="group" aria-label="Next 12 months" className="flex snap-x gap-1.5 overflow-x-auto pb-1 sm:gap-2">
       {earlier.length > 0 && (
         <button onClick={() => onFocus(months[0].key)} aria-label={`${plural(earlier.length, 'overdue filing')} from earlier months`} title="Overdue from earlier months"
-          className="flex min-h-[104px] w-[72px] shrink-0 snap-start flex-col rounded-xl border border-critical/50 bg-critical-soft px-2.5 pb-2 pt-2 text-left sm:w-[84px]">
+          className="flex min-h-[104px] w-[72px] shrink-0 snap-start flex-col rounded-xl bg-critical-soft px-2.5 pb-2 pt-2 text-left sm:w-[84px]">
           <span className="text-sm font-semibold text-critical-ink">Earlier</span>
           <span className="mt-2 flex flex-wrap content-start gap-1" aria-hidden>
-            {earlier.slice(0, 12).map((t) => <span key={t.id} className="h-2.5 w-2.5 rounded-full bg-critical" />)}
+            {earlier.slice(0, 12).map((t) => <span key={t.id} className="h-1.5 w-1.5 rounded-full bg-critical" />)}
             {earlier.length > 12 && <span className="text-[10px] font-medium leading-none text-critical-ink">+{earlier.length - 12}</span>}
           </span>
           <span className="mt-auto pt-2 text-[11px] font-medium text-critical-ink">{earlier.length} overdue</span>
@@ -118,24 +118,24 @@ export const MonthStrip: React.FC<{
         return (
           <button key={m.key} onClick={() => onFocus(m.key)} aria-pressed={active} aria-label={desc} title={desc}
             className={cn(
-              'relative flex min-h-[104px] w-[72px] shrink-0 snap-start flex-col rounded-xl border px-2.5 pb-2 pt-2 text-left transition-colors sm:w-[84px] lg:min-w-[64px] lg:flex-1',
-              active ? 'border-primary bg-primary-soft' : 'border-transparent bg-surface-2 hover:border-line-strong',
+              'relative flex min-h-[104px] w-[72px] shrink-0 snap-start flex-col rounded-xl border px-2.5 pb-2 pt-2 text-left transition-[background-color,box-shadow,border-color] sm:w-[84px] lg:min-w-[64px] lg:flex-1',
+              active ? 'border-primary bg-surface shadow-raised' : 'border-transparent bg-surface-2 hover:border-line-strong',
+              m.isNow && 'ring-2 ring-primary/70 ring-offset-2 ring-offset-surface',
             )}>
             <span className="flex items-baseline justify-between">
-              <span className={cn('text-sm font-semibold', active ? 'text-primary-ink' : 'text-ink')}>{m.short}</span>
+              <span className="text-sm font-semibold text-ink">{m.short}</span>
               {showYear && <span className="text-[10px] font-medium text-ink-3">{`'${String(m.year).slice(2)}`}</span>}
             </span>
             <span className="mt-2 flex flex-wrap content-start gap-1" aria-hidden>
               {shown.map((t) => t.state === 'done'
                 ? <Check key={t.id} className="h-2.5 w-2.5 text-ink-3" strokeWidth={3} />
-                : <span key={t.id} className={cn('h-2.5 w-2.5 rounded-full', DOT[t.state])} />)}
+                : <span key={t.id} className={cn('h-1.5 w-1.5 rounded-full', DOT[t.state])} />)}
               {list.length > shown.length && <span className="text-[10px] font-medium leading-none text-ink-3">+{list.length - shown.length}</span>}
             </span>
             <span className="mt-auto pt-2 text-[11px] text-ink-3">
-              {m.isNow && <span className="mr-1 font-semibold text-primary-ink">Now</span>}
+              {m.isNow && <span className="mr-1 font-semibold text-ink">Now</span>}
               {pending > 0 ? `${pending} to file` : list.length > 0 ? 'All filed' : ''}
             </span>
-            {m.isNow && <span aria-hidden className="absolute inset-x-3 -top-px h-0.5 rounded-full bg-primary" />}
           </button>
         );
       })}
@@ -145,9 +145,9 @@ export const MonthStrip: React.FC<{
 
 export const StripLegend: React.FC = () => (
   <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-3" aria-label="Legend">
-    <li className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-critical" aria-hidden />Overdue</li>
-    <li className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-warn" aria-hidden />Due within 7 days</li>
-    <li className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-primary" aria-hidden />Upcoming</li>
+    <li className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-critical" aria-hidden />Overdue</li>
+    <li className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-warn" aria-hidden />Due within 7 days</li>
+    <li className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />Upcoming</li>
     <li className="flex items-center gap-1.5"><Check className="h-2.5 w-2.5" strokeWidth={3} aria-hidden />Filed</li>
   </ul>
 );
@@ -199,11 +199,11 @@ const VerifyingNote: React.FC = () => (
 export const DateChip: React.FC<{ iso: string | null; state: TaskState }> = ({ iso, state }) => {
   const d = iso ? parseDay(iso) : null;
   return (
-    <div aria-hidden className={cn('flex h-14 w-12 shrink-0 flex-col items-center justify-center rounded-lg border text-center leading-none',
-      state === 'overdue' ? 'border-critical/50 bg-critical-soft text-critical-ink' : state === 'due_soon' ? 'border-warn/60 bg-warn-soft text-warn-ink'
-        : state === 'done' ? 'border-line bg-surface text-ink-3' : 'border-line bg-surface text-ink')}>
+    <div aria-hidden className={cn('flex h-14 w-12 shrink-0 flex-col items-center justify-center rounded-lg text-center font-mono leading-none',
+      state === 'overdue' ? 'bg-critical-soft text-critical-ink' : state === 'due_soon' ? 'bg-warn-soft text-warn-ink'
+        : state === 'done' ? 'bg-surface text-ink-3 shadow-card' : 'bg-surface text-ink shadow-card')}>
       <span className="text-[10px] font-medium uppercase tracking-wide opacity-80">{d ? d.toLocaleDateString('en-IN', { month: 'short' }) : ''}</span>
-      <span className="my-0.5 text-lg font-semibold">{d ? d.getDate() : '-'}</span>
+      <span className="my-0.5 text-lg font-semibold tabular-nums">{d ? d.getDate() : '-'}</span>
       <span className="text-[10px] font-medium opacity-80">{d ? d.toLocaleDateString('en-IN', { weekday: 'short' }) : ''}</span>
     </div>
   );
@@ -236,7 +236,7 @@ export const ObligationRow: React.FC<{ task: ComplianceTask; flash?: boolean }> 
   const sub = [t.form_name, t.authority].filter(Boolean).join(' · ');
 
   return (
-    <li id={`task-${t.id}`} className={cn('rounded-2xl bg-surface-2 transition-shadow', t.state === 'overdue' && 'ring-1 ring-critical/40', done && 'opacity-70', flash && 'animate-in ring-2 ring-primary/60')}>
+    <li id={`task-${t.id}`} className={cn('rounded-2xl border transition-[box-shadow,background-color]', open ? 'border-line bg-surface shadow-card' : 'border-transparent bg-surface-2 hover:shadow-card', done && !open && 'opacity-60', flash && 'animate-in ring-2 ring-primary/60')}>
       <div className="flex items-start gap-3 p-3 sm:p-4">
         <DateChip iso={t.due_date} state={t.state} />
         <div className="min-w-0 flex-1">
@@ -302,17 +302,17 @@ export const NextUpHero: React.FC<{ task: ComplianceTask | null; overdueCount: n
   const urgent = d <= 7;
   const period = periodText(t.period_label);
   return (
-    <section aria-label="Next up" className={cn('rounded-2xl border p-5 sm:p-6', urgent ? 'border-warn/60 bg-warn-soft/50' : 'border-transparent bg-surface-2')}>
+    <section aria-label="Next up" className={cn('rounded-2xl p-5 sm:p-6', urgent ? 'bg-warn-soft' : 'bg-surface-2')}>
       <div className="flex items-center justify-between gap-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">Next up</p>
         {overdueCount > 0 && <button onClick={onSeeOverdue} className="text-xs font-semibold text-critical-ink underline">{overdueCount} overdue, see below</button>}
       </div>
       <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
-        <div className="shrink-0 sm:w-36">
+        <div className="shrink-0 sm:w-40">
           {d === 0
-            ? <p className={cn('text-5xl font-bold leading-none tracking-tight sm:text-6xl', 'text-warn-ink')}>Today</p>
-            : <p className={cn('flex items-baseline gap-2 font-bold leading-none tracking-tight', urgent ? 'text-warn-ink' : 'text-primary-ink')}>
-                <span className="text-6xl">{d}</span><span className="text-base font-semibold">{d === 1 ? 'day left' : 'days left'}</span>
+            ? <p className="font-display text-6xl font-normal leading-none tracking-tight text-warn-ink">Today</p>
+            : <p className={cn('flex items-baseline gap-2 leading-none', urgent ? 'text-warn-ink' : 'text-ink')}>
+                <span className="font-display text-7xl font-normal tabular-nums tracking-tight">{d}</span><span className="text-sm font-semibold">{d === 1 ? 'day left' : 'days left'}</span>
               </p>}
           <p className="mt-2 text-sm font-medium text-ink-2">{formatDate(t.due_date)}</p>
         </div>

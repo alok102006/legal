@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.dependencies import RequestContext, get_ctx, require_writer
 from app.shared.db.session import get_db_session
-from app.workspaces.vendor_intelligence import registry, schemas, service
+from app.workspaces.vendor_intelligence import engine, registry, schemas, service
 
 router = APIRouter()
 
@@ -31,7 +31,20 @@ async def quick_check(body: schemas.QuickCheckIn, ctx: RequestContext = Depends(
 @router.post("/check", response_model=schemas.CheckResult)
 async def check(body: schemas.CheckIn, db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(get_ctx)):
     """The check desk: verify a GSTIN, PAN or Udyam number (offline checks + live registry when connected). Does not save."""
-    return await service.check_identifier(db, ctx, body.identifier, body.name, body.state_code)
+    return await service.check_identifier(db, ctx, body.identifier, body.name, body.state_code, body.kind)
+
+
+@router.get("/risk-rules", response_model=schemas.RiskRulesOut)
+async def risk_rules(ctx: RequestContext = Depends(get_ctx)):
+    """Plain-English explanation of every check and of how the verdict (high / medium / low / unverified) is reached."""
+    return engine.RISK_RULES
+
+
+@router.post("/recheck-all", response_model=schemas.RecheckAllOut)
+async def recheck_all(db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(require_writer)):
+    """Re-check every saved supplier. Registry answers fetched in the last 24 h are reused (no paid call); at most
+    REGISTRY_RECHECK_MAX_LIVE paid lookups are made per run."""
+    return await service.recheck_all(db, ctx)
 
 
 @router.get("/match", response_model=Optional[schemas.VendorBrief])
@@ -61,9 +74,9 @@ async def update_vendor(vendor_id: uuid.UUID, body: schemas.VendorUpdate, db: As
 
 
 @router.post("/{vendor_id}/recheck", response_model=schemas.VendorDetail)
-async def recheck_vendor(vendor_id: uuid.UUID, db: AsyncSession = Depends(get_db_session),
-                         ctx: RequestContext = Depends(require_writer)):
-    return await service.to_detail(db, await service.recheck(db, ctx, vendor_id))
+async def recheck_vendor(vendor_id: uuid.UUID, refresh: bool = Query(False, description="Ask the live registry again even if a 24 h old answer is stored (costs a lookup)"),
+                         db: AsyncSession = Depends(get_db_session), ctx: RequestContext = Depends(require_writer)):
+    return await service.to_detail(db, await service.recheck(db, ctx, vendor_id, refresh))
 
 
 @router.delete("/{vendor_id}")

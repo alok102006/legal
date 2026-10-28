@@ -5,7 +5,7 @@ import pytest
 
 from app.core.llm.errors import LLMUnavailable
 from app.workspaces.legal_notice_center import service
-from app.workspaces.legal_notice_center.engine.schemas import NoticeFacts, NoticeReplyDraft
+from app.workspaces.legal_notice_center.engine.schemas import NoticeFacts, NoticeOcr, NoticeReplyDraft
 from tests.workspaces.legal_notice_center.sample_notices import CHEQUE_BOUNCE_NOTICE
 
 TODAY = date(2026, 10, 22)
@@ -138,3 +138,74 @@ async def test_tenancy_and_list_order(api, fake_llm):
         assert (await call).status_code == 404
     lst = (await api.get("/api/v1/notices")).json()
     assert lst[0]["id"] == cid and lst[0]["urgency"] == "critical"
+
+
+# ------------------------------------------------------------------ production-grade behaviour
+
+SARFAESI_NOTICE = """STATE BANK OF INDIA, STRESSED ASSETS RECOVERY BRANCH, SURAT
+DEMAND NOTICE UNDER SECTION 13(2) OF THE SECURITISATION AND RECONSTRUCTION OF FINANCIAL ASSETS AND ENFORCEMENT OF SECURITY INTEREST ACT, 2002
+To: Kulkarni Textiles Pvt Ltd (Borrower)
+Your loan account has been classified as a non-performing asset. You are hereby called upon to discharge in full your liabilities of Rs. 48,50,000/- within 60 days from the date of this notice, failing which the bank shall exercise its rights under Section 13(4).
+Authorised Officer
+"""
+
+
+def _facts_handler(facts: dict, reply="Sir, [CONFIRM: was the loan repaid in part?]"):
+    def h(call):
+        if call.schema is NoticeFacts:
+            return json.dumps({"title": "Notice", "summary_points": ["x"], **facts}, ensure_ascii=False)
+        if call.schema is NoticeReplyDraft:
+            return json.dumps(dict(reply_text=reply, points_to_confirm=[], documents_to_gather=[]))
+        if call.schema is NoticeOcr:
+            return json.dumps({"pages": [{"number": 1, "text": CHEQUE_BOUNCE_NOTICE[:400]}, {"number": 2, "text": CHEQUE_BOUNCE_NOTICE[400:]}]})
+        raise AssertionError(call.schema)
+    return h
+
+
+async def test_missing_notice_date_is_asked_for_then_drives_the_deadline(api, fake_llm):
+    fake_llm(_facts_handler(dict(notice_type="sarfaesi_13_2", amount_claimed=4850000, response_days=60, response_days_from="notice_date",
+                                 deadline_quote="You are hereby called upon to discharge in full your liabilities of Rs. 48,50,000/- within 60 days from the date of this notice, failing which the bank shall exercise its rights under Section 13(4).")))
+    r = await api.post("/api/v1/notices/text", json={"text": SARFAESI_NOTICE, "received_date": "2026-10-22"})
+    d = (await api.get(f"/api/v1/notices/{r.json()['id']}")).json()
+    assert d["needs_notice_date"] is True and d["response_deadline"] is None and d["deadline_source"] == "unknown"
+    assert d["type_info"]["statutory_window"]["citation"] == "SARFAESI Act 2002, s.13(2)" and d["urgency"] == "high"
+    d2 = (await api.patch(f"/api/v1/notices/{d['id']}", json={"notice_date": "2026-10-05"})).json()
+    assert d2["needs_notice_date"] is False and d2["response_deadline"] == "2026-12-04" and d2["in_calendar"] is True
+    assert d2["deadline_verified"] is True and {b["basis"] for b in d2["deadline_basis"]} == {"stated_period", "statutory"}
+    assert "Rs 48,50,000" in d2["lawyer_brief"] and "4. LAW" in d2["lawyer_brief"]
+
+
+async def test_court_summons_gets_an_action_plan_and_a_lawyer_gate(api, fake_llm):
+    fake_llm(_facts_handler(dict(notice_type="court_summons", hearing_date="2026-11-30"), reply="STEPS\n1. Engage an advocate."))
+    r = await api.post("/api/v1/notices/text", json={"text": CHEQUE_BOUNCE_NOTICE, "received_date": "2026-10-22"})
+    d = (await api.get(f"/api/v1/notices/{r.json()['id']}")).json()
+    assert d["draft_kind"] == "action_plan" and d["lawyer_required"] is True
+    assert d["drafts"][0]["reply_text"].startswith("ACTION PLAN") and d["type_info"]["handler"] == "lawyer_required"
+    # hearing date unverified (no quote) but earlier than the 30-day written statement window
+    assert d["response_deadline"] == "2026-11-21" and d["deadline_source"] == "statutory_default"
+
+
+async def test_page_photos_upload_as_one_notice(api, fake_llm):
+    fake_llm(_facts_handler(dict(notice_type="cheque_bounce", response_days=15,
+                                 deadline_quote="within 15 days from the receipt of this notice")))
+    files = [("files", ("page1.jpg", b"\xff\xd8\xff" + b"1" * 50, "image/jpeg")), ("files", ("page2.jpg", b"\xff\xd8\xff" + b"2" * 50, "image/jpeg"))]
+    r = await api.post("/api/v1/notices/upload", files=files, data={"received_date": "2026-10-22"})
+    assert r.status_code == 202, r.text
+    d = (await api.get(f"/api/v1/notices/{r.json()['id']}")).json()
+    assert d["status"] == "analyzed" and d["pages"] == 2 and d["ocr_used"] is True and d["deadline_verified"] is True
+    assert d["source_name"] == "page1.jpg (+1 pages)"
+    mixed = [("files", ("a.pdf", b"%PDF-1.4", "application/pdf")), ("files", ("b.jpg", b"\xff\xd8\xff", "image/jpeg"))]
+    assert (await api.post("/api/v1/notices/upload", files=mixed)).status_code == 400
+    assert (await api.delete(f"/api/v1/notices/{d['id']}")).status_code == 200
+
+
+async def test_hindi_notice_detail(api, fake_llm):
+    from tests.workspaces.legal_notice_center.sample_notices import HINDI_CHEQUE_NOTICE
+    quote = "अतः आपको इस नोटिस की प्राप्ति के १५ दिनों के भीतर रु. 2,40,000/- का भुगतान करने हेतु कहा जाता है"
+    fake_llm(_facts_handler(dict(notice_type="cheque_bounce", language="hi", notice_date="2026-10-12", response_days=15,
+                                 deadline_quote=quote, summary_local=["आपका चेक बाउंस हुआ।"])))
+    r = await api.post("/api/v1/notices/text", json={"text": HINDI_CHEQUE_NOTICE, "received_date": "2026-10-22"})
+    d = (await api.get(f"/api/v1/notices/{r.json()['id']}")).json()
+    assert d["language"] == "hi" and d["summary_local"] == ["आपका चेक बाउंस हुआ।"]
+    assert d["key_quotes"] == [{"kind": "deadline", "text": quote, "verified": True}]
+    assert d["response_deadline"] == "2026-11-06" and d["notice_date_verified"] is True

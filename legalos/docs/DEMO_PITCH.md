@@ -22,7 +22,7 @@ When it does not know, it says so. Let me show you on a document you choose."
 Three lines to say about the engineering whenever there is a pause:
 - "Every AI claim is verified against the source text before it is shown. If the quote cannot be found, we say so."
 - "The GST check is the government registry, live. The compliance calendar is 28 rules with sources, not a list."
-- "179 automated tests. Retrieval measured: the right passage is in the top six for 16 of 16 questions."
+- "604 automated tests. Retrieval measured: the right passage is the top result for 32 of 33 questions."
 
 ## 2. The demo (10 minutes, in this order)
 
@@ -38,7 +38,7 @@ Open the **Ask** tab and ask: "Can I take a job with a competitor after I leave?
 
 If a judge wants another one: **SaaS subscription** (04) finds the 20% renewal increase, the 1-month liability cap for
 the vendor vs unlimited for the customer, and Delaware arbitration. **Machinery finance** (05) finds 36% penal
-interest, blank cheques and repossession without notice. (The Mumbai lease, 01, gave only 3 findings - avoid it.)
+interest, blank cheques and repossession without notice. (The Mumbai lease, 01, now gives 20 findings including the 36-month lock-in, one-sided termination and the repair burden; it works well too.)
 
 What to say: "Six contract types, each with its own checklist. Long documents are cut at a clause boundary and the
 screen says so. Photos of pages go through OCR."
@@ -65,7 +65,7 @@ left) show the urgency colours. **Income-tax 143(2)** (08) shows a notice with n
 Open **Compliance**. "Every filing for this company for the next 12 months, built from its profile: private limited,
 Gujarat, GST monthly, 50 to 199 employees." Point at the one overdue GSTR-3B and the late fee so far.
 Open the panel ("Why these filings"), click Edit profile, switch **GST composition scheme** on. GSTR-1 and GSTR-3B
-disappear, CMP-08 and GSTR-4 appear. "Rules, not a hard-coded list. 28 rules, each with its source." Switch it back.
+disappear, CMP-08 and GSTR-4 appear. "Rules, not a hard-coded list. 30 rules, each with its source, checked by a lint test." Switch it back.
 
 ### Act 5 - Documents (1.5 min): "Ask your own papers"
 Open **Documents**. In the scope picker choose **Safety**. Ask in Hinglish:
@@ -74,8 +74,8 @@ The answer is in Hindi: "24 ghante ke bheetar", with a citation. Click the chip:
 Then scope **Board** and ask: `Who is authorised to sign cheques and up to what amount?` - four verified citations.
 Then: `summarise the leave policy` (scope HR). "Summaries, lookups and Hinglish, all grounded."
 
-Tip: keep the scope on a collection for the demo. Asked across everything, "accident report" also matches the
-insurance policy's 48-hour claim rule, which is a fair answer but not the one you want on stage.
+Asked across everything, the Hinglish accident question now answers from the safety manual (24 hours) and adds a note
+that the insurance schedule has a 48-hour claim rule. Scoping to Safety still gives the cleanest answer on stage.
 
 ### Close (30 s)
 "Every answer you saw carried its evidence. When the AI does not know, it says so. That is the difference between a
@@ -94,7 +94,7 @@ If the AI is rate-limited, the screen says so honestly; switch to a pre-loaded f
   document before showing it; unverifiable ones are flagged. Retrieval is hybrid (keywords + embeddings + a reranker).
 - **Is this legal advice?** No. Decision support. Rules show their source, replies need lawyer review, and we say so on screen.
 - **Where is the data?** Local Postgres and Qdrant, per organisation. The AI provider sees only the document being analysed.
-- **Accuracy numbers?** Retrieval hit@6 16/16, hit@1 13/16 on a labelled set. 179 automated tests. Citation verification rate shown live as "confidence".
+- **Accuracy numbers?** Retrieval hit@1 96% and hit@8 100% on a 33-question labelled set (tables, Hindi, exact codes, multi-document). 604 automated tests. Citation verification rate shown live as "confidence".
 - **Business model?** Per-company subscription for SMEs; CA firms as the channel (one CA serves 50 to 200 SMEs).
 - **What is not done?** Fine-tuned InLegalBERT, Professional Tax for all states, Hindi UI, MCA registry lookups.
 - **Why not ChatGPT?** It cannot check the GST registry, cannot build a filing calendar from a profile, cannot verify
@@ -104,12 +104,13 @@ If the AI is rate-limited, the screen says so honestly; switch to a pre-loaded f
 
 | File | What the product found |
 |---|---|
-| 02 NDA "mutual" | 10 findings, 4 critical: fixed penalty per breach, unlimited indemnity, perpetual confidentiality, assignment of our improvements |
-| 03 Offer letter | 10 findings: 5-year non-compete (critical), certificate retention, unilateral amendments, 6-month vs 30-day notice |
-| 04 SaaS | 10 findings: vendor termination + exit penalty, 1-month liability cap vs unlimited, 20% renewal increase |
-| 05 Machinery finance | 10 findings, 4 critical: 36% penal interest, blank cheques, acceleration, repossession without notice |
-| 06 Distribution | 11 findings: liability imbalance, shortfall penalty, unilateral price revisions, pan-India non-compete |
-| 07 GST DRC-01 | gst_notice, Rs 8,71,250, reply by 13 Nov 2026 (16 days), all 3 key quotes verified, 5 actions |
+| 01 Mumbai lease | 20 findings: 36-month lock-in with full-term penalty (critical), landlord exit at will (critical), structural repairs on the licensee (critical), 180-day deposit refund |
+| 02 NDA "mutual" | 14 findings, 3 critical: fixed penalty per breach, unlimited indemnity, assignment of our improvements |
+| 03 Offer letter | 12 findings: 5-year non-compete (critical), certificate retention, unilateral amendments, 6-month vs 30-day notice |
+| 04 SaaS | 19 findings: vendor termination + exit penalty, 1-month liability cap vs unlimited, 20% renewal increase |
+| 05 Machinery finance | 18 findings, 5 critical: 36% penal interest, blank cheques, acceleration, repossession without notice |
+| 06 Distribution | 15 findings: liability imbalance, shortfall penalty, unilateral price revisions, pan-India non-compete |
+| 07 GST DRC-01 | typed as GST show-cause (DRC-01); Rs 8,71,250; three dates weighed (stated 13 Nov, 30-day period from 14 Oct, hearing 24 Nov) and the earliest chosen; 4/4 quotes verified; "Your CA" handles it; 5 actions |
 | 08 Income tax 143(2) | income_tax_notice, 7 days, 3/3 quotes verified |
 | 09 MSME demand | Rs 12,35,600, 3 days left, critical |
 | 10 Rent default | Rs 2,55,000, reply by 4 Nov |

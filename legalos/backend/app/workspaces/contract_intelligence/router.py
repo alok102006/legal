@@ -1,12 +1,14 @@
 import uuid
 from typing import List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse
+from starlette.datastructures import UploadFile as StarletteUpload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import RequestContext, get_ctx, require_writer
 from app.shared.db.session import get_db_session
+from app.shared.exceptions import BadRequestException
 from app.workspaces.contract_intelligence import schemas, service
 
 router = APIRouter()
@@ -14,19 +16,28 @@ router = APIRouter()
 
 @router.post("/upload", response_model=schemas.ContractListItem, status_code=202)
 async def upload_contract(
+    request: Request,
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),
     client_party: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db_session),
     ctx: RequestContext = Depends(require_writer),
 ):
-    """Validates and stores the file, then analyses it in the background (poll GET /{id})."""
-    data = await file.read()
-    contract = await service.create_upload(db, ctx, data, file.filename or "contract.txt", client_party)
+    """Validates and stores the file, then analyses it in the background (poll GET /{id}).
+
+    Send one document as `file`, or several photos of one contract's pages as repeated `files` parts (in page
+    order); the photos are combined into one PDF and read page by page. (`files` is read from the form directly:
+    FastAPI 0.110 rejects an optional list of uploads.)"""
+    extra = [u for u in (await request.form()).getlist("files") if isinstance(u, StarletteUpload)]
+    uploads = [(u.filename or "contract.txt", await u.read()) for u in ([file] if file else []) + extra]
+    if not uploads:
+        raise BadRequestException("Please choose a file to upload.")
+    name, data = uploads[0] if len(uploads) == 1 else await service.combine_photos(uploads)
+    contract = await service.create_upload(db, ctx, data, name, client_party)
     background_tasks.add_task(service.run_analysis, contract.id)
     return {
         "id": contract.id, "title": contract.title, "status": contract.status, "stage": contract.stage,
-        "filename": file.filename, "created_at": contract.created_at, "finding_counts": {},
+        "filename": name, "created_at": contract.created_at, "finding_counts": {},
     }
 
 

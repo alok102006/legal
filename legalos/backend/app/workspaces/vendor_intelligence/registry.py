@@ -6,18 +6,23 @@ Providers (GST_API_PROVIDER):
            mapped defensively (lgnm, tradeNam, sts, rgdt, ctb, pradr, dty ...).
 - none / empty: not connected. Offline checks only.
 
+Live answers are cached per GSTIN for 24 hours (see registry_cache.py): a repeated check, a re-check of a saved
+supplier or "re-check all" never pays twice. `lookup(..., force=True)` bypasses the cache.
+
 sample: a few clearly labelled demo records, only when DEMO_MODE=true (never invented for arbitrary GSTINs).
 Anything that goes wrong comes back as source="unavailable" with a typed error_kind. We never fabricate a result
 and never report "active" unless the registry said so.
 """
+import dataclasses
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
 import httpx
 
 from app.config import settings
 from app.shared.india import identifiers as ids
+from app.workspaces.vendor_intelligence import registry_cache
 from app.workspaces.vendor_intelligence.engine import RegistryResult
 from app.workspaces.vendor_intelligence.errors import AUTH, NOT_CONNECTED, NOT_FOUND, QUOTA, UNAVAILABLE, RegistryError
 
@@ -88,7 +93,6 @@ def registry_mode(result: Optional[RegistryResult] = None) -> Tuple[str, Optiona
 
 def result_from_dict(d: Optional[Dict[str, Any]], source: Optional[str]) -> RegistryResult:
     """Rebuild a RegistryResult from what we stored on a saved supplier."""
-    import dataclasses
     known = {f.name for f in dataclasses.fields(RegistryResult)}
     data = {k: v for k, v in (d or {}).items() if k in known and k != "source"}
     return RegistryResult(source=source or "unavailable", **data)
@@ -234,7 +238,32 @@ def _fail(kind: str, message: str) -> RegistryResult:
     return RegistryResult(source="unavailable", error_kind=kind, message=message, provider=active_provider())
 
 
-async def lookup(gstin: Optional[str]) -> RegistryResult:
+def _stored(result: RegistryResult) -> dict:
+    return {k: v for k, v in dataclasses.asdict(result).items() if v not in (None, "")}
+
+
+def cached_result(gstin: str) -> Optional[RegistryResult]:
+    """A fresh cached answer for this GSTIN as a RegistryResult (flagged `cached`), or None."""
+    hit = registry_cache.get(ids.normalize(gstin))
+    if hit is None:
+        return None
+    kind, data, at = hit
+    fetched = datetime.fromtimestamp(at, timezone.utc).isoformat()
+    if kind == registry_cache.MISSING:
+        return RegistryResult(source="unavailable", error_kind=NOT_FOUND, message=data.get("message") or "",
+                              provider=data.get("provider"), fetched_at=fetched, cached=True)
+    result = result_from_dict(data, "live")
+    result.fetched_at, result.cached = result.fetched_at or fetched, True
+    return result
+
+
+def needs_live_call(gstin: Optional[str]) -> bool:
+    """Would `lookup` spend a paid call for this GSTIN right now? (Live provider connected and nothing fresh cached.)"""
+    return bool(gstin and ids.decode_gstin(gstin).valid and active_provider() and not registry_cache.has_fresh(ids.normalize(gstin)))
+
+
+async def lookup(gstin: Optional[str], force: bool = False) -> RegistryResult:
+    """Registry record for a GSTIN. Cached live answers are returned without a call unless `force`."""
     if not (gstin or "").strip():
         return RegistryResult(source="unavailable", error_kind="no_gstin",
                               message="Not checked: the GST registry is searched by GSTIN, and none was given.")
@@ -244,14 +273,23 @@ async def lookup(gstin: Optional[str]) -> RegistryResult:
 
     provider = active_provider()
     if provider:
+        if not force:
+            cached = cached_result(g)
+            if cached is not None:
+                return cached
         try:
-            return await _live(provider, g)
+            result = await _live(provider, g)
         except RegistryError as e:
             logger.warning("live GST lookup (%s) failed: %s", provider, e.kind)
+            if e.kind == NOT_FOUND:
+                registry_cache.put(g, registry_cache.MISSING, {"provider": provider, "message": e.message})
             return _fail(e.kind, f"Registry lookup failed: {e.message}" if e.kind != NOT_FOUND else e.message)
         except Exception as e:  # parse problems must never look like "all clear"
             logger.warning("live GST lookup (%s) crashed: %s", provider, type(e).__name__)
             return _fail(UNAVAILABLE, "Registry lookup failed: the GST registry could not be reached.")
+        result.fetched_at = datetime.now(timezone.utc).isoformat()
+        registry_cache.put(g, registry_cache.FOUND, _stored(result))
+        return result
 
     if settings.demo_mode and g in SAMPLE_RECORDS:
         r = SAMPLE_RECORDS[g]

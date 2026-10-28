@@ -6,6 +6,10 @@ os.environ["ENV"] = "test"
 os.environ["DEMO_MODE"] = "true"
 os.environ["LLM_PROVIDER"] = "fake"
 os.environ["DOCUMENTS_COLLECTION"] = "documents_v2_test"       # never touch the real vector collection
+# Tests must never reach a paid GST registry, whatever the developer's .env / container environment says.
+os.environ["SANDBOX_CO_MODE"] = "mock"
+for _name in ("GST_API_PROVIDER", "GST_API_KEY", "GST_API_SECRET", "GST_API_BASE_URL", "SANDBOX_CO_API_KEY", "SANDBOX_CO_API_SECRET"):
+    os.environ[_name] = ""
 os.environ["DATABASE_URL"] = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://legalos:legalos_secure_password@db:5432/legalos_test"
 )
@@ -27,9 +31,11 @@ def _isolate_settings(tmp_path):
         for k in (
             "llm_provider", "gemini_model", "gemini_fallback_models", "llm_max_retries",
             "llm_requests_per_minute", "llm_max_concurrency", "llm_cache_enabled", "llm_cache_dir",
+            "registry_cache_dir", "llm_cache_max_mb", "llm_cache_max_entries",
         )
     }
     settings.llm_cache_dir = str(tmp_path / "llm_cache")
+    settings.registry_cache_dir = str(tmp_path / "registry_cache")
     settings.llm_requests_per_minute = 10_000
     limiter.reset_gate()
     yield

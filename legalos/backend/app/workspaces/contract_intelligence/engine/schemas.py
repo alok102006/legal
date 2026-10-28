@@ -9,17 +9,36 @@ from pydantic import BaseModel, Field
 
 
 class ContractType(str, Enum):
-    supply = "supply"                # goods purchase / supply
-    service = "service"              # services / consulting / AMC
-    distribution = "distribution"    # dealer / distributor / agency / reseller
-    franchise = "franchise"          # franchise / licensing of a brand or business format
-    partnership = "partnership"      # partnership deed / joint venture / shareholders' arrangement
-    lease = "lease"                  # rent / leave-and-licence
-    employment = "employment"        # offer letter / employment / consultancy-individual
+    """What SMEs actually sign. Profiles (client side, checklist, applicable rules) live in contract_types.py."""
+    supply = "supply"                          # goods supply agreement
+    purchase_order = "purchase_order"          # PO / PO terms and conditions
+    service = "service"                        # general services
+    works_construction = "works_construction"  # civil / construction / installation works
+    agency_commission = "agency_commission"    # commission / sales agent
+    consultancy = "consultancy"                # consultant / freelancer engagement
+    distribution = "distribution"              # distributor / stockist / reseller
+    dealership = "dealership"                  # dealer of a manufacturer
+    franchise = "franchise"
+    job_work = "job_work"                      # processing the principal's material
+    logistics = "logistics"                    # transport / courier / freight
+    warehousing = "warehousing"
+    equipment_hire = "equipment_hire"          # hire / operating lease of equipment
+    lease = "lease"                            # rent / leave-and-licence of premises
+    employment = "employment"                  # offer letter / employment
     nda = "nda"
-    loan_guarantee = "loan_guarantee"
+    loan_guarantee = "loan_guarantee"          # term loan / hypothecation / hire-purchase finance
+    vehicle_loan = "vehicle_loan"
+    credit_facility = "credit_facility"        # overdraft / cash credit / working capital
+    personal_guarantee = "personal_guarantee"
+    mou_loi = "mou_loi"                        # MoU / letter of intent / term sheet
+    shareholder_agreement = "shareholder_agreement"
+    partnership = "partnership"                # partnership deed / joint venture
+    security_manpower = "security_manpower"    # security guards / manpower supply
+    amc_maintenance = "amc_maintenance"
+    advertising_marketing = "advertising_marketing"
+    ecommerce_marketplace = "ecommerce_marketplace"
     software_license = "software_license"
-    other = "other"
+    other = "other"                            # anything else (incl. insurance proposals)
 
 
 class FindingCategory(str, Enum):
@@ -65,6 +84,7 @@ class Party(BaseModel):
 
 class ContractFacts(BaseModel):
     title: str = Field(description="Title of the agreement as written, or a short descriptive title.")
+    likely_client: Optional[str] = Field(default=None, description="If no client was named: the exact name of the party most likely to be the small business using this tool - the one that pays, rents, borrows, buys, distributes, subscribes or receives confidential information (licensee/tenant, buyer, borrower, distributor, customer, receiving party); for an employment letter the employer. null when a client was named.")
     contract_type: ContractType
     contract_type_detail: Optional[str] = Field(
         default=None,
@@ -95,7 +115,30 @@ class ContractFacts(BaseModel):
     liability_cap_present: Optional[bool] = Field(default=None, description="True if liability is capped at a stated amount/formula; False if uncapped or no cap clause.")
     liability_cap_text: Optional[str] = None
     stamp_duty_mentioned: Optional[bool] = Field(default=None, description="True if the document refers to stamp paper / stamp duty / registration.")
+    lock_in_months: Optional[int] = Field(default=None, description="Lock-in / minimum period during which our client cannot exit, in months; null if none.")
+    escalation_percent_per_year: Optional[float] = Field(default=None, description="Rent/fee increase per year in percent (e.g. 15% every 3 years = 5.0); null if none.")
+    deposit_refund_days: Optional[int] = Field(default=None, description="Days after exit within which a security deposit must be refunded; null if not stated.")
     key_dates: List[str] = Field(default_factory=list, description="Other important dates/deadlines, each as 'YYYY-MM-DD: what happens'.")
+
+
+class FactsUpdate(BaseModel):
+    """Facts visible only in the second part of a long contract (governing law, notices etc. are often at the end)."""
+    governing_law: Optional[str] = None
+    jurisdiction: Optional[str] = None
+    dispute_mechanism: Optional[DisputeMechanism] = None
+    arbitration_seat: Optional[str] = None
+    auto_renewal: Optional[bool] = None
+    renewal_notice_days: Optional[int] = None
+    termination_notice_days_client: Optional[int] = None
+    termination_notice_days_other: Optional[int] = None
+    liability_cap_present: Optional[bool] = None
+    liability_cap_text: Optional[str] = None
+    stamp_duty_mentioned: Optional[bool] = None
+    payment_days: Optional[int] = None
+    late_payment_interest: Optional[str] = None
+    lock_in_months: Optional[int] = None
+    escalation_percent_per_year: Optional[float] = None
+    deposit_refund_days: Optional[int] = None
 
 
 # ------------------------------------------------------------------ pass 2: findings
@@ -121,6 +164,36 @@ class MissingProtection(BaseModel):
 class RiskAnalysis(BaseModel):
     findings: List[RawFinding]
     missing_protections: List[MissingProtection] = Field(default_factory=list)
+
+
+class PartReview(BaseModel):
+    """Map step for long contracts: risks in the second part plus facts only that part shows."""
+    findings: List[RawFinding]
+    facts_update: FactsUpdate = Field(default_factory=FactsUpdate)
+
+
+class TopicStatus(str, Enum):
+    present_hurts = "present_hurts"
+    present_fair = "present_fair"
+    absent = "absent"
+
+
+class SweepItem(BaseModel):
+    topic: str = Field(description="The checklist topic, copied from the list.")
+    status: TopicStatus
+    category: FindingCategory
+    segment_id: Optional[str] = Field(default=None, description="Segment of the quote (present_* only).")
+    quote: Optional[str] = Field(default=None, description="VERBATIM text from the contract (present_* only, max 300 chars).")
+    severity: Optional[Severity] = Field(default=None, description="present_hurts only.")
+    title: Optional[str] = Field(default=None, description="present_hurts / absent: plain-English headline, max 12 words.")
+    why_it_matters: Optional[str] = None
+    recommendation: Optional[str] = None
+    suggested_wording: Optional[str] = None
+
+
+class ChecklistSweep(BaseModel):
+    """Recall pass: every checklist topic gets a verdict, so quiet contracts are not under-reviewed."""
+    items: List[SweepItem]
 
 
 # ------------------------------------------------------------------ chat

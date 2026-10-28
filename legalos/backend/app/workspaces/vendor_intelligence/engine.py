@@ -45,6 +45,8 @@ class RegistryResult:
     filing_status: Optional[str] = None      # as reported by the provider, when it gives one
     taxpayer_type: Optional[str] = None      # Regular | Composition ...
     cancellation_date: Optional[str] = None  # ISO
+    fetched_at: Optional[str] = None         # when the registry was actually asked (ISO); older than "now" for cached results
+    cached: bool = False                     # True when served from the 24 h lookup cache (no paid call was made)
 
 
 @dataclass
@@ -116,7 +118,7 @@ def assess(
     holder_letter: Optional[str] = info.pan[3] if (info and info.valid) else None
     if pan and pan.strip():
         if not ids.validate_pan(pan):
-            checks.append(Check("pan", "PAN", FAIL, "The PAN you entered is not a valid PAN format (AAAAA9999A)."))
+            checks.append(Check("pan", "PAN", FAIL, "The PAN you entered is not valid. " + (ids.decode_pan(pan).error or "")))
         elif info and info.valid and ids.normalize(pan) != info.pan:
             checks.append(Check("pan", "PAN matches GSTIN", FAIL,
                                 f"The PAN you entered ({ids.normalize(pan)}) is different from the PAN inside the GSTIN ({info.pan})."))
@@ -210,6 +212,14 @@ def assess(
         if registry.msme_category and not msme_category:
             derived["msme_category"] = registry.msme_category
 
+    # ---------------------------------------------------------------- PAN 5th letter vs the name (warning only)
+    pan_value = derived.get("pan")
+    if pan_value and holder_letter and holder_letter != "P":      # sole proprietors trade under names unrelated to their own
+        names = [n for n in (name, registry.legal_name if registry else None, registry.trade_name if registry else None) if n and n.strip()]
+        warnings = [ids.pan_name_warning(pan_value, n) for n in names]
+        if names and all(warnings):
+            checks.append(Check("pan_name", "PAN matches the name", WARN, warnings[0] or ""))
+
     # ---------------------------------------------------------------- overall
     fails = [c for c in checks if c.status == FAIL]
     warns = [c for c in checks if c.status == WARN]
@@ -239,3 +249,96 @@ def reasons_for(checks: List[Dict[str, Any]], risk: str) -> List[str]:
         good = [c["detail"] for c in checks if c.get("status") == PASS and c.get("key") in ("registry", "name", "age", "filing", "entity")]
         return good[:4] or by(PASS)[:3]
     return by(PASS)[:2] + by(UNKNOWN)[:1]
+
+
+# ----------------------------------------------------------------------------- other identifiers (check desk only)
+
+_NO_REGISTRY = {
+    "tan": "A TAN proves the business is registered to deduct tax; confirm it on the Income Tax e-filing portal.",
+    "cin": "Confirm the company is active and its name on the MCA portal (company master data).",
+    "llpin": "Confirm the LLP is active on the MCA portal (LLP master data).",
+    "ifsc": "Confirm the branch details on the RBI / bank website before sending money.",
+    "iec": "Confirm the IEC on the DGFT portal.",
+    "fssai": "Confirm the licence and its expiry on the FSSAI FoSCoS portal.",
+    "esic": "Confirm the code on the ESIC employer portal.",
+    "pf": "Confirm the establishment on the EPFO employer portal.",
+}
+_LABELS = {"tan": "TAN", "cin": "CIN", "llpin": "LLPIN", "ifsc": "IFSC", "iec": "IEC", "fssai": "FSSAI licence number",
+           "esic": "ESIC employer code", "pf": "PF establishment code"}
+
+
+def _describe(info: "ids.IdInfo") -> str:
+    d = info.details
+    if info.kind == "cin":
+        bits = [d.get("listing_status"), d.get("company_type"), f"registered in {d['state_name']}" if d.get("state_name") else None,
+                f"incorporated {d['incorporation_year']}"]
+        return "Format is valid: " + ", ".join(b for b in bits if b) + "."
+    if info.kind == "ifsc":
+        bank = d.get("bank_name") or f"bank code {d['bank_code']}"
+        return f"Format is valid: {bank}, branch code {d['branch_code']}."
+    if info.kind == "iec" and d.get("pan_based"):
+        return "Format is valid (PAN-based IEC)."
+    if info.kind == "pf":
+        return f"Format is valid (region {d['region_code']}, office {d['office_code']}, establishment {d['establishment_number']})."
+    return "Format is valid."
+
+
+def assess_identifier(kind: str, value: str, name: Optional[str] = None, today: Optional[date] = None) -> Assessment:
+    """Offline check of a CIN, TAN, LLPIN, IFSC, IEC, FSSAI, ESIC or PF number. These have no registry we can query, so
+    the best outcome is "unverified": the number is well-formed and the summary says where to confirm it."""
+    info = ids.decode(kind, value, name=name, today=today)
+    label = _LABELS.get(kind, kind.upper())
+    if not info.valid:
+        checks = [Check("format", f"{label} format", FAIL, info.error or f"Invalid {label}.")]
+        return Assessment(checks=checks, risk_level="high", summary=f"Do not pay yet. {checks[0].detail}",
+                          reasons=[checks[0].detail])
+    checks = [Check("format", f"{label} format", PASS, _describe(info))]
+    checks += [Check("format_note", f"{label} detail", WARN, w) for w in info.warnings]
+    derived = {k: v for k, v in info.details.items() if v is not None}
+    if info.warnings:
+        return Assessment(checks=checks, risk_level="medium", summary=f"Proceed with care. {info.warnings[0]}",
+                          derived=derived, reasons=list(info.warnings))
+    return Assessment(checks=checks, risk_level="unverified",
+                      summary=f"The {label} is well-formed, but it has not been confirmed with the issuing authority. {_NO_REGISTRY.get(kind, '')}".strip(),
+                      derived=derived, reasons=[checks[0].detail])
+
+
+# ----------------------------------------------------------------------------- the rules, in plain English
+
+RISK_RULES: Dict[str, Any] = {
+    "levels": [
+        {"level": "high", "label": "Do not pay yet",
+         "when": ["Any check FAILS: a number has a typo (checksum), a PAN does not match the one inside the GSTIN, or the "
+                  "registry says the registration is cancelled, suspended or inactive."]},
+        {"level": "medium", "label": "Proceed with care",
+         "when": ["No check fails, but at least one WARNS: no GSTIN given, name or business type differs from the "
+                  "registry or the PAN, state differs, registered less than a year ago, returns reported as not filed, "
+                  "or the registry has no record of the number."]},
+        {"level": "low", "label": "Safe to proceed",
+         "when": ["Nothing failed or warned AND the live GST registry confirmed an active registration. "
+                  "Sample (demo) records can show this too, and are labelled as samples."]},
+        {"level": "unverified", "label": "Looks valid, not verified live",
+         "when": ["Nothing failed or warned, but no registry confirmed the registration (not connected, lookup failed, or "
+                  "the number type has no registry). A supplier that was never looked up is never called low risk."]},
+    ],
+    "checks": [
+        {"key": "gstin", "label": "GSTIN format and check digit", "fails_when": "wrong length/format, unknown state code, impossible PAN holder type or the check digit does not match", "warns_when": "no GSTIN given"},
+        {"key": "pan", "label": "PAN", "fails_when": "invalid PAN format, or it differs from the PAN inside the GSTIN", "warns_when": ""},
+        {"key": "entity", "label": "Business type matches the name", "fails_when": "", "warns_when": "the name says Pvt Ltd / LLP but the PAN holder type is something else"},
+        {"key": "state", "label": "State", "fails_when": "", "warns_when": "the state you gave differs from the GSTIN state (affects CGST+SGST vs IGST)"},
+        {"key": "udyam", "label": "Udyam (MSME) number", "fails_when": "", "warns_when": "not a valid UDYAM-XX-00-0000000 number or an unknown state code"},
+        {"key": "registry", "label": "GST registry status", "fails_when": "registration is cancelled, suspended or inactive", "warns_when": "the registry has no record of the GSTIN"},
+        {"key": "name", "label": "Name matches the registry", "fails_when": "", "warns_when": "the name you gave is not similar (token match below 70%) to the registered legal or trade name"},
+        {"key": "age", "label": "Registration age", "fails_when": "", "warns_when": "registered less than a year ago"},
+        {"key": "filing", "label": "Return filing", "fails_when": "", "warns_when": "the registry reports non-filing, late or irregular filing"},
+        {"key": "behaviour", "label": "Compliance behaviour", "fails_when": "", "warns_when": "the registry record carries a compliance note (demo samples only)"},
+        {"key": "pan_name", "label": "PAN matches the name", "fails_when": "", "warns_when": "for non-individual PANs, the 5th letter is not the first letter of the name (warning only: renames and trade names are common)"},
+        {"key": "format", "label": "Number format (CIN, TAN, LLPIN, IFSC, IEC, FSSAI, ESIC, PF)", "fails_when": "wrong length or pattern, impossible year or checks specific to that number", "warns_when": ""},
+        {"key": "format_note", "label": "Number detail", "fails_when": "", "warns_when": "an unrecognised state code or company class, or a listed company with a private-company class"},
+    ],
+    "notes": [
+        "These are deterministic rules, not a score: every verdict lists the checks behind it.",
+        "A passing format or checksum only shows the number is well-formed; only a live registry shows it is active.",
+        "Live registry results are kept for 24 hours per GSTIN to avoid repeated paid lookups; the check time is shown.",
+    ],
+}

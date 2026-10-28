@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Building2, CircleUserRound, Cpu, LogOut, Pencil, X } from 'lucide-react';
 import { toFriendlyError } from '@/api/client';
-import { useHealth } from '@/api/health';
+import { useHealth, type Health } from '@/api/health';
 import { useSession } from '@/lib/auth/session';
 import { cn } from '@/lib/utils';
 import { Badge, Button, ErrorState, Skeleton } from '@/ui/primitives';
@@ -27,9 +27,9 @@ const Company: React.FC = () => {
   const { data: org, isLoading, isError, error, refetch } = useOrg();
   return (
     <>
-      <div className="mb-6 flex items-start justify-between gap-4 pr-10">
+      <div className="mb-6 flex items-start justify-between gap-4 pr-12">
         <h2 className="font-display text-[2rem] leading-none text-ink">Company</h2>
-        <Link to="/onboarding" className="inline-flex h-9 items-center gap-2 rounded-xl border border-line-strong bg-surface px-3.5 text-[13px] font-medium text-ink btn-quiet"><Pencil className="h-3.5 w-3.5" aria-hidden />Edit profile</Link>
+        <Link to="/onboarding" className="btn-quiet inline-flex h-9 items-center gap-2 rounded-xl border border-line-strong bg-surface px-3.5 text-[13px] font-medium text-ink hover:bg-surface-2"><Pencil className="h-3.5 w-3.5" aria-hidden />Edit profile</Link>
       </div>
       {isLoading && <Skeleton className="h-64 w-full" />}
       {isError && <ErrorState message={toFriendlyError(error).message} onRetry={() => refetch()} />}
@@ -51,6 +51,40 @@ const Company: React.FC = () => {
   );
 };
 
+const ms = (v?: number) => (v === undefined ? null : <span className="text-ink-3"> · {v < 10 ? v.toFixed(1) : Math.round(v)} ms</span>);
+const pct = (v: number | null | undefined) => (v === null || v === undefined ? 'no lookups yet' : `${Math.round(v * 100)}% hit rate`);
+
+/** Caches and work queues: what the system saved you from asking twice, and what is waiting. */
+const Activity: React.FC<{ health: Health }> = ({ health }) => {
+  const { cache, queue, llm } = health.checks;
+  const lc = cache?.llm;
+  const rc = cache?.registry;
+  const rows: [string, React.ReactNode][] = [];
+  if (lc) rows.push(['AI answer cache', lc.enabled ? <>{lc.entries.toLocaleString('en-IN')} saved answers ({lc.size_mb} MB of {lc.max_mb} MB) · {lc.hits} hits, {lc.misses} misses · {pct(lc.hit_rate)}</> : 'Off']);
+  if (rc) rows.push(['GST registry cache', <>{rc.hits} reused, {rc.misses} not cached, {rc.writes} saved (kept 24 hours)</>]);
+  if (queue) {
+    const j = queue.jobs;
+    rows.push(['Reading queue', <>{j.running} running, {j.queued} waiting{j.retrying ? `, ${j.retrying} retrying` : ''} · {j.workers} workers · {j.succeeded_recent} done, {j.failed_recent} failed recently</>]);
+    if (queue.llm) rows.push(['AI request line', <>{queue.llm.in_flight} in flight, {queue.llm.waiting} waiting</>]);
+  }
+  if (llm.usage) rows.push(['AI usage since start', <>{llm.usage.calls} calls · {llm.usage.errors} errors · {(llm.usage.prompt_tokens + llm.usage.output_tokens).toLocaleString('en-IN')} tokens</>]);
+  if (llm.quota) {
+    const ex = llm.quota.exhausted;
+    rows.push(['AI daily quota', ex.length === 0 ? `${llm.quota.keys} keys, none used up` : <>{ex.length} of {llm.quota.keys * llm.quota.models.length} key and model pairs used up (next opens in {Math.min(...ex.map((e) => e.resets_in_minutes))} min)</>]);
+  }
+  if (rows.length === 0) return null;
+  return (
+    <dl className="mt-5 rounded-2xl bg-surface-2 px-5 py-1" aria-label="Caches and queues">
+      {rows.map(([k, v]) => (
+        <div key={k} className="flex items-start justify-between gap-6 border-b border-line py-3 last:border-0">
+          <dt className="shrink-0 text-sm text-ink-2">{k}</dt>
+          <dd className="text-right text-sm text-ink">{v}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+};
+
 const System: React.FC = () => {
   const { data: health } = useHealth();
   const Line: React.FC<{ label: React.ReactNode; ok: boolean; okText?: string; badText?: string; tone?: 'critical' | 'warn' }> = ({ label, ok, okText = 'Working', badText = 'Down', tone = 'critical' }) => (
@@ -63,12 +97,15 @@ const System: React.FC = () => {
     <>
       <h2 className="mb-6 font-display text-[2rem] leading-none text-ink">System</h2>
       {!health ? <Skeleton className="h-40 w-full" /> : (
+        <>
         <div className="rounded-2xl bg-surface-2 px-5 py-1">
-          <Line label="Database" ok={health.checks.database.ok} />
-          <Line label="Document search" ok={health.checks.vector_store.ok} />
+          <Line label={<>Database{ms(health.checks.database.latency_ms)}</>} ok={health.checks.database.ok} badText={health.checks.database.message ?? 'Down'} />
+          <Line label={<>Document search{ms(health.checks.vector_store.latency_ms)}</>} ok={health.checks.vector_store.ok} badText={health.checks.vector_store.message ?? 'Down'} />
           <Line label={<>AI analysis{health.checks.llm.model ? <span className="text-ink-3"> · {health.checks.llm.model}</span> : null}</>} ok={health.checks.llm.ok} badText={health.checks.llm.message ?? 'Unavailable'} />
           <Line label="GST registry lookups" ok={!!health.checks.registry.live} okText="Live" badText="Offline checks only" tone="warn" />
         </div>
+        <Activity health={health} />
+        </>
       )}
       <p className="mt-4 text-xs text-ink-3">AI output is decision support, not legal advice. Every finding shows the text or rule it rests on.</p>
     </>
@@ -102,7 +139,7 @@ export const SettingsPage: React.FC = () => {
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/30" />
         <Dialog.Content aria-describedby={undefined}
-          className="fixed left-1/2 top-1/2 z-50 flex h-[min(620px,calc(100vh-2rem))] w-[calc(100vw-1.5rem)] max-w-[840px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-3xl bg-surface shadow-float animate-scale-in [--origin:top_right] max-sm:flex-col">
+          className="fixed left-1/2 top-1/2 z-50 flex h-[min(620px,calc(100vh-2rem))] w-[calc(100vw-1.5rem)] max-w-[840px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-3xl bg-surface shadow-float max-sm:flex-col">
           <Dialog.Title className="sr-only">Settings</Dialog.Title>
           <aside className="flex w-full shrink-0 flex-col bg-surface-2/70 p-4 sm:w-[220px] sm:p-5">
             {NAV.map((g) => (
@@ -122,7 +159,7 @@ export const SettingsPage: React.FC = () => {
           </aside>
           <div className="relative min-w-0 flex-1 overflow-y-auto p-6 sm:p-8">
             <Dialog.Close asChild>
-              <button className="absolute right-5 top-7 flex h-8 w-8 items-center justify-center rounded-lg text-ink-3 hover:bg-surface-2 hover:text-ink" aria-label="Close"><X className="h-4 w-4" aria-hidden /></button>
+              <button className="absolute right-5 top-6 flex h-9 w-9 items-center justify-center rounded-lg text-ink-3 hover:bg-surface-2 hover:text-ink" aria-label="Close"><X className="h-4 w-4" aria-hidden /></button>
             </Dialog.Close>
             {section === 'company' && <Company />}
             {section === 'system' && <System />}

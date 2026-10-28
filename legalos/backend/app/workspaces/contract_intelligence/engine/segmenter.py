@@ -5,17 +5,21 @@ the LLM can cite `S7` and we can verify quotes and point the UI at the right pag
 """
 import re
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Set
 
 from app.core.rag.parsing import ParsedDocument
 
 MAX_SEGMENT_CHARS = 6000
 
-_ARTICLE = re.compile(r"^(?:ARTICLE|Article|SECTION|Section|CLAUSE|Clause)\s+([IVXLC]+|\d+(?:\.\d+)*)\s*[\.:\-–)]?\s*(.*)$")
-_TOP_NUMBERED = re.compile(r"^(\d{1,2})\s*[\.\)]\s+(\S.{0,110})$")
-_SUB_NUMBERED = re.compile(r"^(\d{1,2}(?:\.\d{1,2}){1,3})\s*[\.\)]?\s+(\S.*)$")
+# \d is Unicode-aware, so Devanagari digits (१, २, ५.२) number clauses exactly like 1, 2, 5.2.
+# Hindi drafting uses धारा / खंड / खण्ड / अनुच्छेद for "clause/section/article" and may end numbers with a danda (।).
+_ARTICLE = re.compile(
+    r"^(?:ARTICLE|Article|SECTION|Section|CLAUSE|Clause|धारा|खंड|खण्ड|अनुच्छेद|क्लॉज़|क्लॉज)\s+"
+    r"([IVXLC]+|\d+(?:\.\d+)*)(?![A-Za-z])\s*[\.:\-–)।]?\s*(.*)$")
+_TOP_NUMBERED = re.compile(r"^(\d{1,2})\s*[\.\)।]\s+(\S.{0,110})$")
+_SUB_NUMBERED = re.compile(r"^(\d{1,2}(?:\.\d{1,2}){1,3})\s*[\.\)।]?\s+(\S.*)$")
 _ALLCAPS = re.compile(r"^[A-Z][A-Z0-9 ,&/'\-–:()]{3,80}$")
-_SCHEDULE = re.compile(r"^(?:SCHEDULE|ANNEXURE|ANNEXURE|EXHIBIT|APPENDIX)\b.*$", re.I)
+_SCHEDULE = re.compile(r"^(?:SCHEDULE|ANNEXURE|EXHIBIT|APPENDIX|अनुसूची|परिशिष्ट|संलग्नक)(?:\b|\s|$).*$", re.I)
 
 
 @dataclass
@@ -41,10 +45,11 @@ def _heading_of(line: str):
     if m:
         return m.group(1), m.group(2).strip().rstrip(":")
     m = _TOP_NUMBERED.match(s)
-    if m and not re.match(r"^\d{1,2}\s*[\.\)]\s+\d", s):  # "1. 5000 units" is not a heading
+    if m and not re.match(r"^\d{1,2}\s*[\.\)।]\s+\d", s):  # "1. 5000 units" is not a heading
         title = m.group(2).strip()
-        # Heading-like: short, or Title/UPPER case without sentence punctuation overload
-        if len(title) <= 70 or title.isupper():
+        sentence = title.endswith((".", "।")) and len(title.split()) > 6 and not title.isupper()
+        # Heading-like: short, or UPPER case; a numbered full sentence is a list item, not a clause heading
+        if not sentence and (len(title) <= 70 or title.isupper()):
             return m.group(1), title.rstrip(":")
     if _SCHEDULE.match(s):
         return None, s
@@ -53,7 +58,10 @@ def _heading_of(line: str):
     return None
 
 
-def segment_contract(doc: ParsedDocument) -> List[Segment]:
+def segment_contract(doc: ParsedDocument, heading_lines: Optional[Set[str]] = None) -> List[Segment]:
+    """Split into clause segments. `heading_lines` are lines the source format marked as headings (Word
+    "Heading" styles), which carry no visible numbering and would otherwise be read as body text."""
+    heading_lines = heading_lines or set()
     # Flatten to (line, page) pairs
     lines: List[tuple[str, Optional[int]]] = []
     for page in doc.pages:
@@ -80,7 +88,7 @@ def segment_contract(doc: ParsedDocument) -> List[Segment]:
         cur_lines, cur_pages = [], []
 
     for line, pno in lines:
-        h = _heading_of(line)
+        h = _heading_of(line) or ((None, line) if line in heading_lines else None)
         # A new heading only starts a segment if it is not a sub-clause of the current one
         if h and not _SUB_NUMBERED.match(line):
             flush()
@@ -174,25 +182,46 @@ class Coverage:
     total_segments: int
     reviewed_pages: Optional[int] = None     # last page that was fully or partly shown
     total_pages: Optional[int] = None
+    parts: int = 1                           # model passes the reviewed text was split into
 
     @property
     def truncated(self) -> bool:
         return self.reviewed_segments < self.total_segments
 
 
-def limit_for_llm(segments: List[Segment], max_chars: int) -> tuple[List[Segment], Coverage]:
-    """Keep whole segments, in order, until the character budget is used. Always keeps at least one."""
-    kept: List[Segment] = []
+def _cost(s: Segment) -> int:
+    return len(s.text) + len(s.heading) + 40
+
+
+def _last_page(segments: List[Segment]) -> Optional[int]:
+    pages = [s.page_end or s.page_start for s in segments if (s.page_end or s.page_start)]
+    return max(pages) if pages else None
+
+
+def split_for_llm(segments: List[Segment], max_chars: int, max_parts: int = 2) -> tuple[List[List[Segment]], Coverage]:
+    """Cut the contract into at most `max_parts` consecutive parts of whole segments, each within the budget.
+
+    A contract that fits is one part (the normal case). A long one gets a second part reviewed by one extra call,
+    so a 60-page agreement is read end to end. Only text beyond `max_parts` budgets is left unreviewed, and
+    Coverage says exactly how much that is."""
+    parts: List[List[Segment]] = [[]]
     size = 0
     for s in segments:
-        cost = len(s.text) + len(s.heading) + 40
-        if kept and size + cost > max_chars:
-            break
-        kept.append(s)
-        size += cost
-    pages = [s.page_end or s.page_start for s in segments if (s.page_end or s.page_start)]
-    shown = [s.page_end or s.page_start for s in kept if (s.page_end or s.page_start)]
-    return kept, Coverage(
+        if parts[-1] and size + _cost(s) > max_chars:
+            if len(parts) == max_parts:
+                break
+            parts.append([])
+            size = 0
+        parts[-1].append(s)
+        size += _cost(s)
+    kept = [s for p in parts for s in p]
+    return parts, Coverage(
         reviewed_segments=len(kept), total_segments=len(segments),
-        reviewed_pages=max(shown) if shown else None, total_pages=max(pages) if pages else None,
+        reviewed_pages=_last_page(kept), total_pages=_last_page(segments), parts=len(parts),
     )
+
+
+def limit_for_llm(segments: List[Segment], max_chars: int) -> tuple[List[Segment], Coverage]:
+    """Keep whole segments, in order, until the character budget is used. Always keeps at least one."""
+    parts, cov = split_for_llm(segments, max_chars, max_parts=1)
+    return parts[0], cov

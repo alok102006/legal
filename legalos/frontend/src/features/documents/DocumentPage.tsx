@@ -21,7 +21,7 @@ export const DocumentPage: React.FC = () => {
   const del = useDeleteDocument();
   const create = useCreateConversation();
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const back = <Link to="/documents" className="inline-flex items-center gap-1 text-sm font-medium text-primary-ink hover:underline"><ArrowLeft className="h-4 w-4" aria-hidden />Documents</Link>;
+  const back = <Link to="/documents" className="inline-flex items-center gap-1 text-sm font-medium text-ink-2 hover:text-ink"><ArrowLeft className="h-4 w-4" aria-hidden />Documents</Link>;
   // opens a chat scoped to this document's collection; the question (if any) is passed along to be asked first
   const startChat = (question?: string) => create.mutate({ collection: d?.category ?? null }, {
     onSuccess: (c) => navigate(`/documents/c/${c.id}`, { state: question ? { ask: question } : undefined }),
@@ -43,7 +43,7 @@ export const DocumentPage: React.FC = () => {
       <PageHeader back={back} title={d.title} subtitle={[d.category ? `Collection: ${d.category}` : null, d.doc_type, d.language, d.file_type, d.page_count ? `${d.page_count} pages` : null, `Added ${formatDate(d.created_at)}`].filter(Boolean).join(' · ')}
         actions={<>
           {d.status === 'ready' && <Button size="sm" variant="secondary" icon={<Download className="h-4 w-4" aria-hidden />} onClick={() => downloadDocument(d.id, d.filename ?? 'document').catch(fail)}>Original</Button>}
-          <Button size="sm" variant="ghost" aria-label="Delete document" onClick={() => setConfirmDelete(true)}><Trash2 className="h-4 w-4" aria-hidden /></Button>
+          <Button size="sm" variant="ghost" className="!h-9 !w-9 !rounded-lg !px-0" aria-label="Delete document" onClick={() => setConfirmDelete(true)}><Trash2 className="h-4 w-4" aria-hidden /></Button>
         </>} />
       <ConfirmDialog open={confirmDelete} onOpenChange={setConfirmDelete} danger loading={del.isPending} title="Delete this document?" description="The file, its search index and any renewal reminder will be removed."
         confirmLabel="Delete" onConfirm={() => del.mutate(d.id, { onSuccess: () => { toast.success('Document deleted'); navigate('/documents'); }, onError: fail })} />
@@ -62,7 +62,7 @@ export const DocumentPage: React.FC = () => {
           {d.suggested_questions.length > 0 && (
             <Card>
               <SectionTitle action={<Button size="sm" variant="secondary" icon={<MessageSquare className="h-4 w-4" aria-hidden />} loading={create.isPending} onClick={() => startChat()}>Ask about this</Button>}>Questions it can answer</SectionTitle>
-              <ul className="flex flex-wrap gap-2">{d.suggested_questions.map((q) => <li key={q}><button onClick={() => startChat(q)} className="rounded-full border border-line px-3 py-1.5 text-sm text-ink-2 hover:border-line-strong hover:bg-surface-2 hover:text-ink">{q}</button></li>)}</ul>
+              <ul className="flex flex-wrap gap-2">{d.suggested_questions.map((q) => <li key={q}><button onClick={() => startChat(q)} className="rounded-full border border-line-strong bg-surface px-3 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink">{q}</button></li>)}</ul>
             </Card>
           )}
 
@@ -73,7 +73,7 @@ export const DocumentPage: React.FC = () => {
             <div className="grid gap-5 md:grid-cols-2">
               <Card>
                 <SectionTitle>In plain English</SectionTitle>
-                <ul className="space-y-2.5">{d.summary_points.map((p) => <li key={p} className="flex gap-2.5 text-sm text-ink"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary-ink" aria-hidden />{p}</li>)}</ul>
+                <ul className="space-y-2.5">{d.summary_points.map((p) => <li key={p} className="flex gap-2.5 text-sm text-ink"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-ink-3" aria-hidden />{p}</li>)}</ul>
               </Card>
               <Card>
                 <SectionTitle>Key facts</SectionTitle>
@@ -87,7 +87,7 @@ export const DocumentPage: React.FC = () => {
               <SectionTitle id="concerns">Worth checking</SectionTitle>
               <ul className="space-y-3">
                 {d.concerns.map((c, i) => (
-                  <li key={i} className="rounded-xl border border-line bg-surface p-4">
+                  <li key={i} className="rounded-2xl border border-line bg-surface p-4 shadow-card">
                     <p className="font-semibold text-ink">{c.title}</p>
                     <p className="text-sm text-ink-2">{c.why_it_matters}</p>
                     <figure className="mt-2 rounded-lg border-l-4 border-line-strong bg-surface-2 p-3">
@@ -108,7 +108,7 @@ export const DocumentPage: React.FC = () => {
             <Card><SectionTitle>Usually included, but missing here</SectionTitle><ul className="flex flex-wrap gap-2">{d.missing_items.map((m) => <Badge key={m} tone="warn">{m}</Badge>)}</ul></Card>
           )}
 
-          <details className="rounded-xl border border-line bg-surface p-4">
+          <details className="rounded-2xl bg-surface-2 p-4">
             <summary className="cursor-pointer text-sm font-medium text-ink">Text we read ({d.chunk_count} passages){d.ocr_used ? ' · from a scan, so please double-check figures' : ''}</summary>
             <div className="mt-3 max-h-[28rem] space-y-4 overflow-auto">
               {Array.from(byPage.entries()).map(([page, cs]) => (

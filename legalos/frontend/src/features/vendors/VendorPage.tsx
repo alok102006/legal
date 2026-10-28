@@ -51,7 +51,7 @@ export const VendorPage: React.FC = () => {
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const back = <Link to="/vendors" className="inline-flex items-center gap-1 text-sm font-medium text-primary-ink hover:underline"><ArrowLeft className="h-4 w-4" aria-hidden />Check desk</Link>;
+  const back = <Link to="/vendors" className="inline-flex items-center gap-1 text-sm font-medium text-ink-2 hover:text-ink"><ArrowLeft className="h-4 w-4" aria-hidden />Check desk</Link>;
   const wrap = (children: React.ReactNode) => (
     <div className="relative h-full overflow-hidden">
       <SuppliersPanel activeId={id} />
@@ -80,7 +80,7 @@ export const VendorPage: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>Edit</Button>
-          <Button size="sm" variant="ghost" aria-label="Delete supplier" onClick={() => setConfirmDelete(true)}><Trash2 className="h-4 w-4" aria-hidden /></Button>
+          <Button size="sm" variant="ghost" className="!h-9 !w-9 !rounded-lg !px-0" aria-label="Delete supplier" onClick={() => setConfirmDelete(true)}><Trash2 className="h-4 w-4" aria-hidden /></Button>
         </div>
       </div>
 

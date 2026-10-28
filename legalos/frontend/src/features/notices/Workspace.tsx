@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Clock, History, Loader2, Plus } from 'lucide-react';
 import { toFriendlyError } from '@/api/client';
-import { ErrorState, Skeleton } from '@/ui/primitives';
+import { EmptyState, ErrorState, SkeletonRows } from '@/ui/primitives';
 import { closeSidePanel, PanelLabel, SidePanel } from '@/ui/sidepanel';
 import { cn, formatINR } from '@/lib/utils';
 import { useNotices, type NoticeListItem } from './api';
@@ -14,7 +14,7 @@ import { NoticeView } from './NoticeView';
 export const Pill: React.FC<{ n: Pick<NoticeListItem, 'status' | 'days_left' | 'response_deadline'>; className?: string }> = ({ n, className }) => {
   const c = countdown(n);
   return (
-    <span className={cn('inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold', TONE_PILL[c.tone], className)}>
+    <span className={cn('inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums', TONE_PILL[c.tone], className)}>
       {n.status === 'processing' ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <Clock className="h-3 w-3" aria-hidden />}
       {c.pill}
     </span>
@@ -49,9 +49,13 @@ const NoticeList: React.FC<{ id?: string; list: NoticeListItem[]; isLoading: boo
   const replied = list.filter((n) => n.status === 'closed');
   return (
     <div>
-      {isLoading && <div className="space-y-3 px-1 pt-1">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-14" />)}</div>}
+      {isLoading && <SkeletonRows rows={4} className="px-2" />}
       {isError && <ErrorState title="Couldn't load notices" message={toFriendlyError(error).message} onRetry={() => refetch()} />}
-      {loaded && list.length === 0 && <p className="px-2 text-sm text-ink-2">No notices yet. Add the first one and it will show here with its countdown.</p>}
+      {loaded && list.length === 0 && (
+        <EmptyState icon={<Clock className="h-5 w-5" />} title="No notices yet" className="py-10"
+          description="Add the first one and it will show here with its countdown."
+          action={<Link to="/notices?new=1" onClick={closePanelOnPhone} className="btn-raised inline-flex h-9 items-center rounded-xl bg-primary px-3.5 text-[13px] font-medium text-primary-on hover:bg-primary-hover">Add a notice</Link>} />
+      )}
       {open.length > 0 && (
         <>
           <PanelLabel>Closest deadline first</PanelLabel>
@@ -79,7 +83,7 @@ export const NoticesWorkspace: React.FC<{ id?: string }> = ({ id }) => {
       <SidePanel storageKey="notices-list" title="Your notices" icon={History} count={openCount}
         actions={
           <Link to="/notices?new=1" onClick={closePanelOnPhone} aria-label="New notice"
-            className="btn-raised inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-primary px-3 text-sm font-medium text-primary-on transition-colors hover:bg-primary-hover sm:px-4">
+            className="btn-raised inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-primary px-3 text-sm font-medium text-primary-on transition-[background-color,box-shadow,transform] hover:bg-primary-hover sm:px-4">
             <Plus className="h-4 w-4" aria-hidden /><span className="hidden sm:inline">New notice</span>
           </Link>
         }>

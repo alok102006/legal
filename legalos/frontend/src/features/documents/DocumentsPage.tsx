@@ -174,22 +174,22 @@ const EmptyThread: React.FC<{ scope: string | null; hasDocs: boolean; onAsk: (q:
   const suggestions = useSuggestions(scope, hasDocs);
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-4 py-10 text-center">
-      <span className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-peach text-peach-ink" aria-hidden><BookOpen className="h-6 w-6" /></span>
+      <span className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-2 text-ink-2 shadow-card" aria-hidden><BookOpen className="h-5 w-5" /></span>
       {hasDocs ? (
         <>
           <h2 className="font-display text-4xl text-ink">What do you want to know?</h2>
-          <p className="mt-2 max-w-md text-sm text-ink-2">Ask in English, Hindi or Hinglish. Every answer quotes the passage and page it came from — or says plainly when your documents don't cover it.</p>
+          <p className="mt-3 max-w-md text-[15px] leading-7 text-ink-2">Ask in English, Hindi or Hinglish. Every answer quotes the passage and page it came from — or says plainly when your documents don't cover it.</p>
           {suggestions.data && suggestions.data.length > 0 && (
-            <ul className="mt-6 grid w-full gap-2 sm:grid-cols-2">
-              {suggestions.data.map((q) => <li key={q}><button onClick={() => onAsk(q)} className="flex w-full items-start gap-2 rounded-2xl bg-surface-2 px-4 py-3.5 text-left text-sm text-ink-2 transition-colors hover:bg-line hover:text-ink"><Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-ink-3" aria-hidden />{q}</button></li>)}
+            <ul className="mt-8 grid w-full gap-2.5 text-left sm:grid-cols-2">
+              {suggestions.data.map((q) => <li key={q}><button onClick={() => onAsk(q)} className="flex w-full items-start gap-2.5 rounded-xl bg-surface-2 px-4 py-3.5 text-left text-sm leading-6 text-ink-2 transition-shadow hover:bg-surface hover:text-ink hover:shadow-raised"><Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-ink-3" aria-hidden />{q}</button></li>)}
             </ul>
           )}
         </>
       ) : (
         <>
           <h2 className="font-display text-4xl text-ink">Your documents, answerable</h2>
-          <p className="mt-2 max-w-md text-sm text-ink-2">Add your HR policy, licences, agreements and board records. Then ask questions like “what notice period did we agree?” and get the answer with the page.</p>
-          <div className="mt-6 flex flex-wrap justify-center gap-2">
+          <p className="mt-3 max-w-md text-[15px] leading-7 text-ink-2">Add your HR policy, licences, agreements and board records. Then ask questions like “what notice period did we agree?” and get the answer with the page.</p>
+          <div className="mt-8 flex flex-wrap justify-center gap-2">
             <Button size="lg" icon={<Upload className="h-4 w-4" aria-hidden />} onClick={onUpload}>Add a document</Button>
             <Button size="lg" variant="secondary" icon={<Sparkles className="h-4 w-4" aria-hidden />} onClick={onSample} loading={sampleLoading}>Try with a sample handbook</Button>
           </div>
@@ -289,7 +289,7 @@ export const DocumentsPage: React.FC = () => {
 
       <section className="flex h-full min-w-0 flex-col" aria-label="Conversation">
         <div className="flex h-[68px] shrink-0 items-center px-5 pr-40 sm:pr-[22rem]">
-          {convId && <h1 className="truncate text-sm font-medium text-ink-2">{conv.data?.title ?? '…'}</h1>}
+          {convId && <h1 className="truncate text-[13px] font-medium text-ink-2">{conv.data?.title ?? '…'}</h1>}
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">

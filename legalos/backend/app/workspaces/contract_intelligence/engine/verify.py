@@ -9,6 +9,7 @@ exactly, only long ones may match fuzzily. Verification proves the text EXISTS; 
 approximate so a reader can judge whether it supports the claim.
 """
 import re
+import unicodedata
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -25,9 +26,11 @@ _QUOTES = str.maketrans({"‘": "'", "’": "'", "“": '"', "”": '"', "–": 
 
 
 def normalize(s: str) -> str:
-    s = s.translate(_QUOTES).lower()
+    s = unicodedata.normalize("NFC", s).translate(_QUOTES).lower()
     s = re.sub(r"-\s*\n\s*", "", s)                  # de-hyphenate line breaks
-    s = re.sub(r"[^\w₹%.,;:()/\- ]+", " ", s)        # \w is Unicode-aware: keeps Devanagari, Gujarati...
+    # \w misses Indic vowel signs and viramas (category Mn/Mc); dropping them would make different Hindi words
+    # look alike and let an invented quote fuzzy-match. Keep the whole Indic block range (U+0900-U+0DFF).
+    s = re.sub(r"[^\wऀ-෿₹%.,;:()/\- ]+", " ", s)
     s = re.sub(r"[_।]+", " ", s)               # underscores and the Devanagari danda act as spaces
     return re.sub(r"\s+", " ", s).strip()
 

@@ -64,6 +64,7 @@ class ContractListItem(BaseModel):
 
 
 class ContractDetail(ContractListItem):
+    contract_type_label: Optional[str] = None     # e.g. "Dealership agreement"; covers types the UI has no label for
     summary_points: List[str] = []
     facts: Optional[Dict[str, Any]] = None
     score_breakdown: Optional[Dict[str, Any]] = None
@@ -86,6 +87,8 @@ class CitationOut(BaseModel):
     segment_id: Optional[str] = None
     page: Optional[int] = None
     verified: bool = False
+    finding: Optional[str] = None        # title of the review finding this quote backs (negotiation answers)
+    legal_ref: Optional[str] = None
 
 
 class ChatMessageOut(BaseModel):

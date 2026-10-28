@@ -14,26 +14,53 @@ const MARKER = /\[(C\d+)\]/g;
 export const AnswerText: React.FC<{ text: string; sources: Source[]; citations: Citation[]; onOpen: (marker: string) => void }> = ({ text, sources, citations, onOpen }) => {
   const known = useMemo(() => new Set(sources.map((s) => s.marker)), [sources]);
   const verifiedBy = useMemo(() => new Map(citations.map((c) => [c.marker, c.verified])), [citations]);
-  const parts: React.ReactNode[] = [];
-  let last = 0; let m: RegExpExecArray | null;
-  text = text.replace(/(\[C\d+\])\s+(?=[.,;:!?])/g, '$1');      // "[C1] ." → "[C1]."
-  MARKER.lastIndex = 0;
-  while ((m = MARKER.exec(text))) {
-    if (m.index > last) parts.push(text.slice(last, m.index));
-    const marker = m[1];
-    if (known.has(marker)) {
-      const n = marker.slice(1);
-      const ok = verifiedBy.get(marker) !== false;
-      parts.push(
-        <button key={`${marker}-${m.index}`} type="button" onClick={() => onOpen(marker)} aria-label={`Source ${n}`}
-          className={cn('mx-0.5 inline-flex h-5 min-w-[1.25rem] translate-y-[-1px] items-center justify-center rounded-md border px-1 align-middle text-[11px] font-semibold leading-none transition-colors',
-            ok ? 'border-primary/30 bg-primary-soft text-primary-ink hover:bg-primary hover:text-primary-on' : 'border-warn/40 bg-warn-soft text-warn-ink')}>{n}</button>,
-      );
+
+  // inline: **bold** and [Cn] citation chips
+  const inline = (line: string, keyBase: string): React.ReactNode[] => {
+    const out: React.ReactNode[] = [];
+    const cleaned = line.replace(/(\[C\d+\])\s+(?=[.,;:!?])/g, '$1');      // "[C1] ." -> "[C1]."
+    const re = /(\*\*[^*]+\*\*)|(\[C\d+(?:\s*,\s*C\d+)*\])/g;   // [C2] or [C1, C2, C4]
+    let last = 0; let m: RegExpExecArray | null; let i = 0;
+    while ((m = re.exec(cleaned))) {
+      if (m.index > last) out.push(cleaned.slice(last, m.index));
+      if (m[1]) out.push(<strong key={`${keyBase}-b${i++}`} className="font-semibold text-ink">{m[1].slice(2, -2)}</strong>);
+      else {
+        for (const marker of m[2].slice(1, -1).split(/\s*,\s*/)) {
+          if (!known.has(marker)) continue;
+          const n = marker.slice(1);
+          const ok = verifiedBy.get(marker) !== false;
+          out.push(
+            <button key={`${keyBase}-c${i++}`} type="button" onClick={() => onOpen(marker)} aria-label={`Source ${n}`}
+              className={cn('mx-0.5 inline-flex h-5 min-w-[1.25rem] translate-y-[-1px] items-center justify-center rounded-md border px-1 align-middle text-[11px] font-semibold leading-none transition-colors',
+                ok ? 'border-line-strong bg-surface-2 text-ink hover:bg-primary hover:text-primary-on' : 'border-warn/40 bg-warn-soft text-warn-ink')}>{n}</button>,
+          );
+        }
+      }
+      last = m.index + m[0].length;
     }
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) parts.push(text.slice(last));
-  return <p className="whitespace-pre-wrap text-[15px] leading-7 text-ink">{parts}</p>;
+    if (last < cleaned.length) out.push(cleaned.slice(last));
+    return out;
+  };
+
+  // blocks: paragraphs separated by blank lines; a block of "- " lines is a list
+  const blocks = text.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
+  return (
+    <div className="space-y-3 text-[15px] leading-7 text-ink">
+      {blocks.map((block, bi) => {
+        const lines = block.split('\n');
+        if (lines.every((l) => /^[-•*]\s+/.test(l))) {
+          return (
+            <ul key={bi} className="space-y-1.5 pl-1">
+              {lines.map((l, li) => (
+                <li key={li} className="flex gap-2.5"><span className="mt-[11px] h-1.5 w-1.5 shrink-0 rounded-full bg-ink-3" aria-hidden /><span className="min-w-0">{inline(l.replace(/^[-•*]\s+/, ''), `${bi}-${li}`)}</span></li>
+              ))}
+            </ul>
+          );
+        }
+        return <p key={bi} className="whitespace-pre-wrap">{inline(block, `${bi}`)}</p>;
+      })}
+    </div>
+  );
 };
 
 /* ------------------------------------------------------------------ messages */
@@ -47,8 +74,8 @@ export const UserMessage: React.FC<{ text: string }> = ({ text }) => (
 );
 
 const SourceChip: React.FC<{ s: Source; verified: boolean | undefined; onClick: () => void }> = ({ s, verified, onClick }) => (
-  <button type="button" onClick={onClick} className="flex max-w-full items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-left text-xs text-ink-2 hover:border-line-strong hover:bg-surface-2">
-    <span className="flex h-4 min-w-[1rem] items-center justify-center rounded bg-primary-soft px-1 text-[10px] font-semibold text-primary-ink" aria-hidden>{s.marker.slice(1)}</span>
+  <button type="button" onClick={onClick} className="flex max-w-full items-center gap-1.5 rounded-full border border-line-strong bg-surface-2 py-1 pl-1.5 pr-2.5 text-left text-xs text-ink-2 transition-colors hover:bg-line">
+    <span className="flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-surface px-1 text-[10px] font-semibold text-ink shadow-card" aria-hidden>{s.marker.slice(1)}</span>
     <span className="truncate font-medium text-ink">{s.document_title}</span>
     {s.page ? <span className="shrink-0 text-ink-3">p. {s.page}</span> : null}
     {verified === true && <Check className="h-3.5 w-3.5 shrink-0 text-good-ink" aria-label="Quote found in the document" />}
@@ -120,8 +147,8 @@ export const SourcePanel: React.FC<{ turn: Turn | null; marker: string | null; o
           {c.verified ? <><Check className="h-3.5 w-3.5" aria-hidden />{c.exact ? 'Quote found word for word' : 'Quote found (minor wording differences)'}</> : <><HelpCircle className="h-3.5 w-3.5" aria-hidden />This wording was not found in the passage — read the original</>}
         </p>
       )}
-      <div className="rounded-2xl bg-surface-2 p-4 text-sm leading-6 text-ink-2">{highlight(s.text, c?.verified ? c.quote : '')}</div>
-      <p className="text-xs text-ink-3">Found by {s.via.includes('keyword') && s.via.includes('vector') ? 'exact words and meaning' : s.via.includes('keyword') ? 'exact words' : 'meaning'}{s.via.includes('rerank') ? ', then re-checked against your question' : ''}.</p>
+      <div className="rounded-2xl bg-surface-2 p-4 font-serif text-[15px] leading-7 text-ink-2">{highlight(s.text, c?.verified ? c.quote : '')}</div>
+      <p className="text-xs text-ink-3">Found by {(s.via.includes('keyword') || s.via.includes('exact')) && s.via.includes('vector') ? 'exact words and meaning' : (s.via.includes('keyword') || s.via.includes('exact')) ? 'exact words' : 'meaning'}{s.via.includes('rerank') ? ', then re-checked against your question' : ''}.</p>
     </div>
   );
   // a sheet over everything on every screen size, so it never competes with the Library panel or its floating buttons
@@ -129,8 +156,9 @@ export const SourcePanel: React.FC<{ turn: Turn | null; marker: string | null; o
     <Dialog.Root open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[60] bg-black/30" />
-        <Dialog.Content className="fixed inset-x-0 bottom-0 z-[70] mx-auto max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl bg-surface p-6 shadow-float" aria-label="Source" aria-describedby={undefined}>
-          <div className="mb-4 flex items-center justify-between"><Dialog.Title className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">Where this comes from</Dialog.Title><Dialog.Close asChild><button className="rounded-full p-1.5 text-ink-2 hover:bg-surface-2" aria-label="Close source"><X className="h-4 w-4" aria-hidden /></button></Dialog.Close></div>
+        <Dialog.Content className="fixed inset-x-0 bottom-0 z-[70] mx-auto max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-b-0 border-line bg-surface px-6 pb-6 pt-3 shadow-float" aria-label="Source" aria-describedby={undefined}>
+          <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line-strong" aria-hidden />
+          <div className="mb-4 flex items-center justify-between"><Dialog.Title className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">Where this comes from</Dialog.Title><Dialog.Close asChild><button className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-2 hover:bg-surface-2" aria-label="Close source"><X className="h-4 w-4" aria-hidden /></button></Dialog.Close></div>
           {body}
         </Dialog.Content>
       </Dialog.Portal>
@@ -158,16 +186,16 @@ export const Composer: React.FC<{
   return (
     <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="mx-auto w-full max-w-3xl">
       {scope && <div className="mb-1.5 flex items-center gap-2 px-1 text-xs text-ink-3">{scope}</div>}
-      <div className={cn('flex items-end gap-2 rounded-2xl border bg-surface p-2 pl-4 shadow-card transition-colors focus-within:border-primary', disabled ? 'border-line opacity-70' : 'border-line-strong')}>
+      <div className={cn('btn-quiet flex items-end gap-2 rounded-2xl border bg-surface p-2 pl-4 transition-colors focus-within:border-primary', disabled ? 'border-line opacity-70' : 'border-line-strong')}>
         <label htmlFor="ask-documents" className="sr-only">Ask a question about your documents</label>
         <textarea id="ask-documents" ref={ref} value={text} onChange={(e) => setText(e.target.value)} rows={1} disabled={disabled}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
           placeholder={placeholder ?? 'Ask anything about your documents…'}
           className="max-h-[200px] min-h-[28px] flex-1 resize-none bg-transparent py-1.5 text-[15px] leading-7 text-ink outline-none placeholder:text-ink-3" />
         {busy && onStop ? (
-          <button type="button" onClick={onStop} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ink text-app hover:opacity-90" aria-label="Stop"><Square className="h-4 w-4" aria-hidden /></button>
+          <button type="button" onClick={onStop} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-on hover:bg-primary-hover" aria-label="Stop"><Square className="h-4 w-4" aria-hidden /></button>
         ) : (
-          <button type="submit" disabled={text.trim().length < 2 || busy || disabled} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-on transition-opacity hover:bg-primary-hover disabled:opacity-40" aria-label="Send">
+          <button type="submit" disabled={text.trim().length < 2 || busy || disabled} className="btn-raised flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-on transition-opacity hover:bg-primary-hover disabled:opacity-30 disabled:shadow-none" aria-label="Send">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <ArrowUp className="h-4 w-4" aria-hidden />}
           </button>
         )}
