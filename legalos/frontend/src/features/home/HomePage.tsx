@@ -41,7 +41,7 @@ const GettingStarted: React.FC<{ done: Record<string, boolean> }> = ({ done }) =
   if (remaining.length === 0) return null;
   const pct = Math.round(((steps.length - remaining.length) / steps.length) * 100);
   return (
-    <Card className="mb-8">
+    <Card className="mb-8 border border-line bg-surface shadow-raised">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><h2 className="text-base font-semibold text-ink">Getting started</h2><p className="text-sm text-ink-2">{pct}% done. Each step takes under a minute.</p></div>
         <div className="h-1.5 w-40 overflow-hidden rounded-full bg-line" aria-hidden><div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} /></div>
@@ -104,7 +104,7 @@ export const HomePage: React.FC = () => {
           { k: 'h', v: highRisk, l: 'High-risk contracts', bad: highRisk > 0 },
           { k: 'n', v: openNotices, l: 'Open notices', bad: openNotices > 0 },
         ]).map((x) => (
-          <div key={x.k} className="rounded-2xl border border-line bg-surface p-5 shadow-card">
+          <div key={x.k} className="rounded-2xl border border-line bg-surface p-5 shadow-raised transition-shadow hover:shadow-float">
             {loading ? <Skeleton className="h-14 w-24" /> : (<>
               <p className={cn('font-display text-[2.8rem] leading-none tabular-nums', x.bad ? 'text-critical-ink' : 'text-ink')}>{x.v}</p>
               <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">{x.l}</p>
@@ -116,7 +116,7 @@ export const HomePage: React.FC = () => {
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0">
           {/* Hero */}
-          <section className="relative overflow-hidden rounded-2xl bg-surface-2 p-8 text-ink sm:p-10">
+          <section className="relative overflow-hidden rounded-2xl border border-line bg-surface p-8 text-ink shadow-raised sm:p-10">
             <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-peach blur-3xl" aria-hidden />
             <div className="pointer-events-none absolute -bottom-28 right-32 h-64 w-64 rounded-full bg-teal-soft blur-3xl" aria-hidden />
             <p className="relative mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-2">Contract review</p>
@@ -178,7 +178,7 @@ export const HomePage: React.FC = () => {
 
         {/* Right column: numbers + next deadlines */}
         <aside className="space-y-4">
-          <div className="rounded-2xl bg-surface-2 p-5">
+          <div className="rounded-2xl border border-line bg-surface p-5 shadow-raised">
             <div className="mb-3 flex items-center justify-between"><p className="text-[15px] font-semibold text-ink">Next deadlines</p><Link to="/compliance" className="text-xs font-medium text-ink-2 underline-offset-4 hover:underline">Calendar</Link></div>
             {compliance.isLoading && <Skeleton className="h-32 w-full" />}
             {compliance.isError && <ErrorState message={toFriendlyError(compliance.error).message} onRetry={() => compliance.refetch()} />}
