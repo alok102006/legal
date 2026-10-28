@@ -167,7 +167,7 @@ export const AppShell: React.FC = () => {
           {/* The sheet */}
           <main id="main" tabIndex={-1} className={cn('sheet relative mb-2 mr-2 min-w-0 flex-1 overflow-hidden rounded-2xl bg-surface max-md:ml-2', fullBleed ? '' : 'overflow-y-auto')}>
             {fullBleed ? <div className="h-full"><ErrorBoundary resetKey={pathname}><Outlet /></ErrorBoundary></div> : (
-              <div className="mx-auto w-full max-w-6xl px-5 pb-16 pt-8 sm:px-10 lg:px-14">
+              <div className="mx-auto w-full max-w-7xl px-5 pb-16 pt-8 sm:px-10 lg:px-12">
                 <HealthBanner />
                 <div key={pathname} className="animate-in"><ErrorBoundary resetKey={pathname}><Outlet /></ErrorBoundary></div>
               </div>

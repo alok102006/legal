@@ -93,23 +93,38 @@ export const HomePage: React.FC = () => {
 
   return (
     <>
-      <h1 className="mb-8 max-w-3xl pr-12 text-[1.75rem] font-semibold leading-[1.2] tracking-[-0.02em] text-ink sm:pr-24">
+      <h1 className="mb-8 max-w-4xl pr-12 font-display text-[2.4rem] font-normal leading-[1.1] tracking-[-0.01em] text-ink sm:pr-24 sm:text-[3rem]">
         {greeting()}, {firstName}. <span className="font-normal text-ink-2">Here is where {org?.legal_name ?? 'your company'} stands.</span>
       </h1>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+      <section aria-label="At a glance" className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {(loading ? [0, 1, 2, 3].map((i) => ({ v: '', l: '', bad: false, k: String(i) })) : [
+          { k: 'o', v: c?.needs_profile ? '-' : c?.overdue ?? 0, l: 'Overdue filings', bad: !!c?.overdue },
+          { k: 'd', v: c?.needs_profile ? '-' : c?.due_in_7_days ?? 0, l: 'Due in 7 days', bad: false },
+          { k: 'h', v: highRisk, l: 'High-risk contracts', bad: highRisk > 0 },
+          { k: 'n', v: openNotices, l: 'Open notices', bad: openNotices > 0 },
+        ]).map((x) => (
+          <div key={x.k} className="rounded-2xl border border-line bg-surface p-5 shadow-card">
+            {loading ? <Skeleton className="h-14 w-24" /> : (<>
+              <p className={cn('font-display text-[2.8rem] leading-none tabular-nums', x.bad ? 'text-critical-ink' : 'text-ink')}>{x.v}</p>
+              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">{x.l}</p>
+            </>)}
+          </div>
+        ))}
+      </section>
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0">
           {/* Hero */}
-          <section className="relative overflow-hidden rounded-2xl bg-ink p-8 text-app sm:p-10">
-            <div className="bg-noise pointer-events-none absolute inset-0" aria-hidden />
-            <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-peach-line/25 blur-3xl" aria-hidden />
-            <div className="pointer-events-none absolute -bottom-32 right-24 h-72 w-72 rounded-full bg-teal/40 blur-3xl" aria-hidden />
-            <p className="relative mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-app/55">Contract review</p>
+          <section className="relative overflow-hidden rounded-2xl bg-surface-2 p-8 text-ink sm:p-10">
+            <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-peach blur-3xl" aria-hidden />
+            <div className="pointer-events-none absolute -bottom-28 right-32 h-64 w-64 rounded-full bg-teal-soft blur-3xl" aria-hidden />
+            <p className="relative mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-2">Contract review</p>
             <h2 className="relative max-w-md font-display text-[2.2rem] leading-[1.05] tracking-[-0.01em] sm:text-[2.7rem]">Read it before you sign it.</h2>
-            <p className="relative mt-4 max-w-md text-[15px] leading-7 text-app/75">Upload any contract. Every clause that could hurt you, quoted from your own document, with what to ask for instead.</p>
+            <p className="relative mt-4 max-w-md text-[15px] leading-7 text-ink-2">Upload any contract. Every clause that could hurt you, quoted from your own document, with what to ask for instead.</p>
             <div className="relative mt-7 flex flex-wrap gap-2">
-              <Link to="/contracts?new=1" className="btn-raised inline-flex h-10 items-center gap-2 rounded-xl bg-app px-4 text-sm font-medium text-ink hover:bg-surface-2"><Upload className="h-4 w-4" aria-hidden />Review a contract</Link>
-              <Link to="/vendors?new=1" className="inline-flex h-10 items-center gap-2 rounded-xl border border-app/20 px-4 text-sm font-medium text-app hover:bg-app/10"><Store className="h-4 w-4" aria-hidden />Check a supplier</Link>
+              <Link to="/contracts?new=1" className="btn-raised inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-medium text-primary-on hover:bg-primary-hover"><Upload className="h-4 w-4" aria-hidden />Review a contract</Link>
+              <Link to="/vendors?new=1" className="btn-quiet inline-flex h-11 items-center gap-2 rounded-xl border border-line-strong bg-surface px-5 text-sm font-medium text-ink hover:bg-surface-2"><Store className="h-4 w-4" aria-hidden />Check a supplier</Link>
             </div>
           </section>
 
@@ -163,23 +178,6 @@ export const HomePage: React.FC = () => {
 
         {/* Right column: numbers + next deadlines */}
         <aside className="space-y-4">
-          <div className="rounded-2xl bg-surface-2 p-5">
-            {loading ? <Skeleton className="h-40 w-full" /> : (
-              <dl className="space-y-5">
-                {[
-                  { v: c?.needs_profile ? '-' : c?.overdue ?? 0, l: 'overdue filings', bad: !!c?.overdue },
-                  { v: c?.needs_profile ? '-' : c?.due_in_7_days ?? 0, l: 'due in 7 days', bad: false },
-                  { v: highRisk, l: 'high-risk contracts', bad: highRisk > 0 },
-                  { v: openNotices, l: 'open notices', bad: openNotices > 0 },
-                ].map((x) => (
-                  <div key={x.l} className="flex items-baseline gap-2.5">
-                    <dt className={cn('font-display text-[2.1rem] leading-none tabular-nums', x.bad ? 'text-critical-ink' : 'text-ink')}>{x.v}</dt>
-                    <dd className="text-[15px] text-ink-2">{x.l}</dd>
-                  </div>
-                ))}
-              </dl>
-            )}
-          </div>
           <div className="rounded-2xl bg-surface-2 p-5">
             <div className="mb-3 flex items-center justify-between"><p className="text-[15px] font-semibold text-ink">Next deadlines</p><Link to="/compliance" className="text-xs font-medium text-ink-2 underline-offset-4 hover:underline">Calendar</Link></div>
             {compliance.isLoading && <Skeleton className="h-32 w-full" />}
