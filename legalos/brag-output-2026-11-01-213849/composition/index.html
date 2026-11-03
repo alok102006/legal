@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>LegalOS - launch film</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      html, body { margin: 0; padding: 0; width: 1920px; height: 1080px; overflow: hidden; background: #f6f5f1; font-family: "Figtree", system-ui, sans-serif; color: #1f1f1e; }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #f6f5f1; }
+      .clip { position: absolute; inset: 0; }
+      .noise { position: absolute; inset: 0; pointer-events: none; opacity: 0.35; z-index: 50;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.06'/%3E%3C/svg%3E"); }
+      .glow { position: absolute; width: 900px; height: 900px; border-radius: 50%; filter: blur(140px); opacity: 0.55; pointer-events: none; }
+      .glow.peach { background: #fdf3e8; left: 1200px; top: -300px; }
+      .glow.teal { background: #dfeeec; left: -200px; top: 500px; }
+
+      /* real screens (1568 wide captures) shown as a sheet 1760 wide */
+      .screen { position: absolute; left: 80px; top: 110px; width: 1760px; border-radius: 18px; overflow: hidden; background: #fff;
+        box-shadow: 0 2px 6px rgba(31,31,30,0.06), 0 40px 90px -30px rgba(31,31,30,0.35); opacity: 0; transform-origin: 50% 50%; }
+      .screen img { display: block; width: 1760px; height: auto; }
+
+      /* paper: crops of real screens rendered as sheets on the desk */
+      .paper { position: absolute; width: 520px; height: 680px; border-radius: 10px; background: #fff; background-repeat: no-repeat; opacity: 0;
+        box-shadow: 0 1px 2px rgba(31,31,30,0.08), 0 30px 60px -24px rgba(31,31,30,0.35); overflow: hidden; }
+      .mini { position: absolute; border-radius: 14px; overflow: hidden; background: #fff; opacity: 0; transform-origin: 50% 50%;
+        box-shadow: 0 2px 6px rgba(31,31,30,0.08), 0 36px 70px -28px rgba(31,31,30,0.4); }
+      .mini img { display: block; width: 100%; height: auto; }
+      .mini .tag { position: absolute; left: 16px; bottom: 14px; font-family: "Figtree"; font-weight: 600; font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; color: #55534e; background: rgba(255,255,255,0.95); padding: 6px 10px; border-radius: 8px; }
+      .mini .pill { position: absolute; right: 16px; top: 14px; font-family: "Figtree"; font-weight: 600; font-size: 20px; padding: 8px 14px; border-radius: 999px; opacity: 0; }
+      .paper .tag { position: absolute; left: 20px; bottom: 18px; font-family: "Figtree"; font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; color: #55534e; background: rgba(255,255,255,0.95); padding: 6px 10px; border-radius: 8px; }
+      .paper .pill { position: absolute; right: 20px; top: 18px; font-family: "Figtree"; font-weight: 600; font-size: 20px; padding: 8px 14px; border-radius: 999px; opacity: 0; }
+      .pill.red { background: #f9dfdf; color: #a82323; } .pill.green { background: #e5f5e5; color: #006300; } .pill.amber { background: #fdf1d2; color: #7a5200; }
+
+      .title { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 240px;
+        font-family: "Instrument Serif", Georgia, serif; font-size: 84px; line-height: 1.08; letter-spacing: -0.012em; color: #1f1f1e; opacity: 0; }
+      .caption { position: absolute; left: 112px; bottom: 54px; font-family: "Instrument Serif", Georgia, serif; font-size: 46px; line-height: 1.15; letter-spacing: -0.01em;
+        color: #1f1f1e; opacity: 0; padding: 14px 22px; background: rgba(246,245,241,0.94); border-radius: 14px; }
+      .statement { position: absolute; left: 0; right: 0; text-align: center; font-family: "Instrument Serif", Georgia, serif; font-size: 64px; letter-spacing: -0.01em; color: #1f1f1e; opacity: 0; }
+
+      /* scene 2 */
+      #bubble { position: absolute; left: 1010px; top: 300px; width: 560px; padding: 26px 32px; background: #ffffff; border-radius: 22px 22px 22px 6px; font-size: 32px; line-height: 1.35; color: #1f1f1e;
+        box-shadow: 0 20px 50px -20px rgba(31,31,30,0.35); opacity: 0; }
+      #bubble small { display: block; font-size: 16px; letter-spacing: 0.12em; text-transform: uppercase; color: #8a877f; margin-bottom: 10px; }
+      #clause { position: absolute; left: 400px; top: 600px; width: 1000px; padding: 18px 26px; font-family: "Newsreader", Georgia, serif; font-size: 34px; line-height: 1.45; color: #1f1f1e; background: #fff; border-radius: 12px; opacity: 0;
+        box-shadow: 0 30px 60px -24px rgba(31,31,30,0.35); }
+      #clause .mark { background: #f9dfdf; box-decoration-break: clone; -webkit-box-decoration-break: clone; padding: 2px 4px; border-radius: 4px; }
+      #redline { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #d03b3b; transform-origin: 50% 0%; }
+
+      .proof { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; }
+      .proof p { margin: 0; font-family: "Instrument Serif", Georgia, serif; font-size: 68px; line-height: 1.1; letter-spacing: -0.012em; color: #1f1f1e; opacity: 0; }
+      .proof .label { position: absolute; left: 0; right: 0; bottom: 60px; text-align: center; font-family: "Figtree"; font-size: 18px; letter-spacing: 0.16em; text-transform: uppercase; color: #55534e; opacity: 0; }
+
+      #cursor { position: absolute; left: 0; top: 0; width: 28px; height: 28px; opacity: 0; z-index: 40; }
+      #cursor svg { width: 28px; height: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.35)); }
+
+      #logo { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; }
+      #mark { width: 120px; height: 120px; opacity: 0; }
+      #word { font-family: "Figtree", sans-serif; font-weight: 600; font-size: 64px; letter-spacing: -0.03em; color: #1f1f1e; opacity: 0; }
+      #tag { font-family: "Instrument Serif", Georgia, serif; font-size: 44px; color: #55534e; opacity: 0; letter-spacing: -0.005em; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="root" data-width="1920" data-height="1080" data-fps="30" data-start="0" data-duration="141">
+      <div class="glow peach"></div>
+      <div class="glow teal"></div>
+      <div class="noise"></div>
+
+      <!-- 1. The Paper (0-15.5) -->
+      <div class="clip" id="scene-paper" data-start="0" data-duration="15.5">
+        <div class="mini" id="pp1" style="left:60px; top:400px; width:560px;"><img src="assets/screens/contract_before.jpg" alt="" /><span class="tag">Contract</span></div>
+        <div class="mini" id="pp2" style="left:490px; top:500px; width:560px;"><img src="assets/screens/notice_strip.jpg" alt="" /><span class="tag">Legal notice</span></div>
+        <div class="mini" id="pp3" style="left:920px; top:400px; width:560px;"><img src="assets/screens/vendor_result.jpg" alt="" /><span class="tag">Supplier</span></div>
+        <div class="mini" id="pp4" style="left:1320px; top:500px; width:560px;"><img src="assets/screens/compliance.jpg" alt="" /><span class="tag">Filings</span></div>
+        <div class="statement" id="st1" style="top:72px">Every business signs things it has not read.</div>
+        <div class="statement" id="st2" style="top:72px">Pays suppliers it has never checked.</div>
+        <div class="statement" id="st3" style="top:72px">And gets letters it does not understand.</div>
+      </div>
+
+      <!-- 2. The Hidden Risk (15.5-24.2) -->
+      <div class="clip" id="scene-risk" data-start="15.5" data-duration="8.9">
+        <div class="paper" id="pp5" style="left:430px; top:120px; width:1060px; height:860px; padding:70px 90px; box-sizing:border-box; font-family:'Newsreader', Georgia, serif; font-size:26px; line-height:1.6; color:#1f1f1e;">
+          <div style="font-family:'Figtree'; font-size:13px; letter-spacing:0.16em; text-transform:uppercase; color:#8a877f; text-align:center; margin-bottom:34px;">Page 1</div>
+          <div style="font-weight:600;">PATEL YARN TRADERS</div>
+          <div>Agreement No. PYT/KT/2026/04 Ring Road, Surat, Gujarat 395002</div>
+          <div style="height:26px"></div>
+          <div style="font-weight:600;">YARN SUPPLY AGREEMENT</div>
+          <div>This Yarn Supply Agreement ("Agreement") is made at Surat on 1st April 2026 between Kulkarni Textiles Private Limited, a company incorporated under the Companies Act, 2013, having its registered office at Plot 14, Sachin GIDC, Surat, Gujarat 394230 (the "Buyer"); and Patel Yarn Traders, a partnership firm having its office at Ring Road, Surat, Gujarat 395002 (the "Supplier").</div>
+          <div style="height:26px"></div>
+          <div style="font-weight:600;">1. SUPPLY</div>
+          <div>1.1 The Supplier shall supply polyester and viscose yarn of the grades listed in Schedule A to the Buyer against purchase orders issued from time to time.</div>
+        </div>
+        <div id="bubble"><small>A chatbot</small>This contract looks standard. Nothing unusual here.</div>
+        <div id="clause"><div id="redline"></div>6.1 The Buyer shall indemnify the Supplier against all losses, claims, damages and expenses of whatever nature arising out of or in connection with this Agreement, <span class="mark">without any limit</span>.</div>
+        <div class="statement" id="st4" style="top:60px; font-size:60px">Confident is not the same as correct.</div>
+      </div>
+
+      <!-- 3. Reveal (24.2-34.6) -->
+      <div class="clip" id="scene-reveal" data-start="24.2" data-duration="10.6">
+        <div class="title" id="t-legalos" style="font-family:'Figtree'; font-weight:600; font-size:120px; letter-spacing:-0.04em">LegalOS</div>
+        <div class="title" id="t-evidence">Every answer shows its evidence.</div>
+        <div class="screen" id="s-home"><img src="assets/screens/home.jpg" alt="" /></div>
+      </div>
+
+      <!-- 4. The Reading Room (34.6-54.6) -->
+      <div class="clip" id="scene-contracts" data-start="34.6" data-duration="20.2">
+        <div class="screen" id="s-c1"><img src="assets/screens/contract_before.jpg" alt="" /></div>
+        <div class="screen" id="s-c2"><img src="assets/screens/contract_after.jpg" alt="" /></div>
+        <div class="screen" id="s-c3"><img src="assets/screens/contract_score.jpg" alt="" /></div>
+        <div class="caption" id="c-c1">Every clause that could hurt you, quoted.</div>
+        <div class="caption" id="c-c2">With what to ask for instead.</div>
+        <div class="caption" id="c-c3">Unverified claims never count.</div>
+      </div>
+      <div id="cursor" class="clip" data-start="36.4" data-duration="3.2">
+        <svg viewBox="0 0 24 24"><path d="M4 2l16 9.5-7.2 1.3L17 21l-2.6 1.2-4.2-8.4L4 19z" fill="#1f1f1e" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg>
+      </div>
+
+      <!-- 5. The Check Desk (54.6-68.7) -->
+      <div class="clip" id="scene-vendors" data-start="54.6" data-duration="14.3">
+        <div class="screen" id="s-v1"><img src="assets/screens/vendor_partial.jpg" alt="" /></div>
+        <div class="screen" id="s-v2"><img src="assets/screens/vendor_full.jpg" alt="" /></div>
+        <div class="screen" id="s-v3"><img src="assets/screens/vendor_result.jpg" alt="" /></div>
+        <div class="screen" id="s-v4"><img src="assets/screens/vendor_wrong.jpg" alt="" /></div>
+        <div class="caption" id="c-v1">The government registry, live.</div>
+        <div class="caption" id="c-v2">Typos and fake numbers never reach it.</div>
+      </div>
+
+      <!-- 6. The Response Desk (68.7-90.5) -->
+      <div class="clip" id="scene-notices" data-start="68.7" data-duration="22">
+        <div class="screen" id="s-n1"><img src="assets/screens/notice_strip.jpg" alt="" /></div>
+        <div class="screen" id="s-n2"><img src="assets/screens/notice_steps.jpg" alt="" /></div>
+        <div class="screen" id="s-n3"><img src="assets/screens/notice_reply.jpg" alt="" /></div>
+        <div class="caption" id="c-n1">The deadline, counted from the law.</div>
+        <div class="caption" id="c-n2">Nothing invented. Blanks for what it does not know.</div>
+        <div class="caption" id="c-n3">A lawyer reviews it before it is final.</div>
+      </div>
+
+      <!-- 7. The Year Planner and the Papers (90.5-108) -->
+      <div class="clip" id="scene-planner" data-start="90.5" data-duration="17.7">
+        <div class="screen" id="s-p1"><img src="assets/screens/compliance.jpg" alt="" /></div>
+        <div class="screen" id="s-p2"><img src="assets/screens/compliance_toggle.jpg" alt="" /></div>
+        <div class="screen" id="s-d1"><img src="assets/screens/docs_answer.jpg" alt="" /></div>
+        <div class="screen" id="s-d2"><img src="assets/screens/docs_source.jpg" alt="" /></div>
+        <div class="caption" id="c-p1">Thirty rules, each with its source.</div>
+        <div class="caption" id="c-p2">Change a fact. The calendar follows.</div>
+        <div class="caption" id="c-d1">Hindi, Hinglish or English. Always cited.</div>
+      </div>
+
+      <!-- 8. Honesty (108-116) -->
+      <div class="clip" id="scene-honesty" data-start="108" data-duration="8.2">
+        <div class="screen" id="s-h"><img src="assets/screens/docs_honest.jpg" alt="" /></div>
+        <div class="caption" id="c-h">When it does not know, it says so.</div>
+      </div>
+
+      <!-- 9. Proof (116-134.7) -->
+      <div class="clip" id="scene-proof" data-start="116" data-duration="18.9">
+        <div class="proof">
+          <p id="q1">604 automated tests.</p>
+          <p id="q2">32 of 33 questions: the right passage first.</p>
+          <p id="q3">All 33 within the top eight.</p>
+          <p id="q4">24 contract rules. 30 compliance rules. 45 notice types.</p>
+          <p id="q5">Every citation checked against the file.</p>
+          <div class="label" id="q-label">Synthetic evaluation set · demo company data</div>
+        </div>
+      </div>
+
+      <!-- 10. Final Hero (134.7-141) -->
+      <div class="clip" id="scene-hero" data-start="134.7" data-duration="6.3">
+        <div class="mini" id="hp1" style="left:70px; top:130px; width:440px;"><img src="assets/screens/contract_after.jpg" alt="" /><span class="pill red" id="hpill1">High risk</span></div>
+        <div class="mini" id="hp2" style="left:1410px; top:130px; width:440px;"><img src="assets/screens/vendor_result.jpg" alt="" /><span class="pill green" id="hpill2">Active</span></div>
+        <div class="mini" id="hp3" style="left:70px; top:700px; width:440px;"><img src="assets/screens/notice_strip.jpg" alt="" /><span class="pill amber" id="hpill3">11 days left</span></div>
+        <div class="mini" id="hp4" style="left:1410px; top:700px; width:440px;"><img src="assets/screens/compliance.jpg" alt="" /><span class="pill red" id="hpill4">1 overdue</span></div>
+        <div id="logo">
+          <svg id="mark" viewBox="0 0 64 64" fill="none" stroke="#1f1f1e" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M32 10v44M16 20h32M18 20L8 40h20zM46 20L36 40h20zM20 54h24"/></svg>
+          <div id="word">LegalOS</div>
+          <div id="tag">Legal and compliance, run as a system.</div>
+        </div>
+      </div>
+
+      <!-- Audio -->
+      <audio id="music" data-start="0" data-duration="139.5" data-track-index="10" data-volume="0.14" data-fade-in="1.5" data-fade-out="3" src="assets/music/happy-beats-business-moves-vol-12-by-ende-dot-app.mp3"></audio>
+      <audio id="vo1" data-start="0.8" data-duration="13.18" data-track-index="3" data-volume="1" src="assets/vo/01_paper.wav"></audio>
+      <audio id="vo2" data-start="16.3" data-duration="7.17" data-track-index="3" data-volume="1" src="assets/vo/02_risk.wav"></audio>
+      <audio id="vo3" data-start="25.0" data-duration="8.83" data-track-index="3" data-volume="1" src="assets/vo/03_reveal.wav"></audio>
+      <audio id="vo4" data-start="35.4" data-duration="18.45" data-track-index="3" data-volume="1" src="assets/vo/04_contracts.wav"></audio>
+      <audio id="vo5" data-start="55.4" data-duration="12.57" data-track-index="3" data-volume="1" src="assets/vo/05_vendors.wav"></audio>
+      <audio id="vo6" data-start="69.5" data-duration="20.27" data-track-index="3" data-volume="1" src="assets/vo/06_notices.wav"></audio>
+      <audio id="vo7" data-start="91.3" data-duration="15.94" data-track-index="3" data-volume="1" src="assets/vo/07_planner.wav"></audio>
+      <audio id="vo8" data-start="108.8" data-duration="6.42" data-track-index="3" data-volume="1" src="assets/vo/08_honesty.wav"></audio>
+      <audio id="vo9" data-start="116.8" data-duration="17.17" data-track-index="3" data-volume="1" src="assets/vo/09_proof.wav"></audio>
+      <audio id="vo10" data-start="135.3" data-duration="3.69" data-track-index="3" data-volume="1" src="assets/vo/10_hero.wav"></audio>
+      <audio id="sfx1" data-start="1.0" data-duration="0.6" data-track-index="11" data-volume="0.3" src="assets/sfx/drop_001.ogg"></audio>
+      <audio id="sfx2" data-start="2.6" data-duration="0.6" data-track-index="11" data-volume="0.3" src="assets/sfx/drop_001.ogg"></audio>
+      <audio id="sfx3" data-start="4.2" data-duration="0.6" data-track-index="11" data-volume="0.3" src="assets/sfx/drop_001.ogg"></audio>
+      <audio id="sfx4" data-start="5.8" data-duration="0.6" data-track-index="11" data-volume="0.3" src="assets/sfx/drop_001.ogg"></audio>
+      <audio id="sfx5" data-start="19.6" data-duration="1.2" data-track-index="12" data-volume="0.35" src="assets/sfx/impactSoft_medium_000.ogg"></audio>
+      <audio id="sfx6" data-start="38.6" data-duration="0.3" data-track-index="11" data-volume="0.45" src="assets/sfx/mouseclick1.ogg"></audio>
+      <audio id="sfx7" data-start="39.0" data-duration="1.2" data-track-index="12" data-volume="0.35" src="assets/sfx/impactSoft_medium_000.ogg"></audio>
+      <audio id="sfx8" data-start="60.6" data-duration="1.2" data-track-index="12" data-volume="0.35" src="assets/sfx/impactSoft_medium_000.ogg"></audio>
+      <audio id="sfx9" data-start="103.0" data-duration="0.3" data-track-index="11" data-volume="0.4" src="assets/sfx/mouseclick1.ogg"></audio>
+      <audio id="sfx10" data-start="136.2" data-duration="2.5" data-track-index="12" data-volume="0.45" src="assets/sfx/impactBell_heavy_000.ogg"></audio>
+
+      <script>
+        const tl = gsap.timeline({ paused: true });
+        const SOFT = "power1.out", EASE = "power2.inOut";
+        const fadeIn = (sel, at, dur = 0.9, y = 0) => tl.fromTo(sel, { opacity: 0, y }, { opacity: 1, y: 0, duration: dur, ease: SOFT }, at);
+        const fadeOut = (sel, at, dur = 0.7) => tl.to(sel, { opacity: 0, duration: dur, ease: SOFT }, at);
+        const screenIn = (sel, at, to, origin = "50% 50%", from = 1.0, scaleTo = 1.05) => {
+          tl.set(sel, { transformOrigin: origin, scale: from }, at);
+          tl.to(sel, { opacity: 1, duration: 0.8, ease: SOFT }, at);
+          tl.to(sel, { scale: scaleTo, duration: Math.max(0.2, to - at), ease: "none" }, at);
+        };
+        const swap = (prev, next, at, origin = "50% 50%", hold = 3, scaleTo = 1.05) => {
+          tl.set(next, { transformOrigin: origin, scale: 1.0 }, at - 0.1);
+          tl.to(next, { opacity: 1, duration: 0.8, ease: SOFT }, at);
+          tl.to(prev, { opacity: 0, duration: 0.4 }, at + 0.5);
+          tl.to(next, { scale: scaleTo, duration: hold, ease: "none" }, at);
+        };
+        const caption = (sel, at, until) => { fadeIn(sel, at, 0.7, 12); fadeOut(sel, until, 0.6); };
+        const statement = (sel, at, until) => { fadeIn(sel, at, 0.9, 8); fadeOut(sel, until, 0.7); };
+
+        // 1. The Paper: four real papers land, three statements
+        [["#pp1", 1.0], ["#pp2", 2.6], ["#pp3", 4.2], ["#pp4", 5.8]].forEach(([s, t]) => {
+          tl.fromTo(s, { opacity: 0, y: 50, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 1.1, ease: "power3.out" }, t);
+          tl.to(s, { y: -16, duration: 15.5 - t, ease: "none" }, t + 1.1);
+        });
+        statement("#st1", 1.2, 5.6); statement("#st2", 6.0, 9.8); statement("#st3", 10.2, 14.6);
+        ["#pp1", "#pp2", "#pp3", "#pp4"].forEach((s) => fadeOut(s, 14.8, 0.7));
+
+        // 2. The Hidden Risk: a confident bubble, then the real clause sharpens
+        tl.fromTo("#pp5", { opacity: 0, scale: 0.98 }, { opacity: 1, scale: 1, duration: 1.0, ease: SOFT }, 15.6);
+        tl.set("#pp5", { transformOrigin: "50% 50%" }, 15.5);
+        fadeIn("#bubble", 16.6, 0.8, 14);
+        tl.set("#redline", { scaleY: 0 }, 15.5);
+        tl.to("#pp5 > div:nth-of-type(8), #pp5 > div:nth-of-type(9)", { opacity: 0, duration: 0.5, ease: SOFT }, 19.2);  // the printed clause gives way to the hidden one
+        tl.fromTo("#clause", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 1.0, ease: "power3.out" }, 19.4);     // the clause rises
+        tl.to("#bubble", { opacity: 0.25, scale: 0.97, duration: 1.0 }, 19.6);
+        tl.to("#redline", { scaleY: 1, duration: 0.9, ease: EASE }, 20.4);
+        statement("#st4", 21.0, 23.8);
+        fadeOut("#clause", 23.6, 0.6); fadeOut("#pp5", 23.6, 0.6); fadeOut("#bubble", 23.4, 0.4);
+
+        // 3. Reveal
+        fadeIn("#t-legalos", 24.6, 1.0, 8); fadeOut("#t-legalos", 27.4, 0.6);
+        fadeIn("#t-evidence", 27.9, 1.0, 8); fadeOut("#t-evidence", 30.6, 0.6);
+        screenIn("#s-home", 31.0, 34.3, "50% 35%", 1.03, 1.0); fadeOut("#s-home", 34.0, 0.6);
+
+        // 4. The Reading Room
+        screenIn("#s-c1", 34.8, 39.5, "70% 80%", 1.0, 1.02);
+        tl.set("#cursor", { x: 1180, y: 640, scale: 1 }, 36.4);
+        tl.to("#cursor", { opacity: 1, duration: 0.3 }, 36.5);
+        tl.to("#cursor", { x: 1548, y: 912, duration: 1.5, ease: EASE }, 36.8);
+        tl.to("#cursor", { scale: 0.85, duration: 0.1 }, 38.6); tl.to("#cursor", { scale: 1, duration: 0.15 }, 38.7);
+        tl.to("#cursor", { opacity: 0, duration: 0.4 }, 39.2);
+        swap("#s-c1", "#s-c2", 39.0, "42% 48%", 8.0, 1.10);                       // clause blooms
+        caption("#c-c1", 40.2, 43.6); caption("#c-c2", 44.0, 47.0);
+        swap("#s-c2", "#s-c3", 47.6, "82% 55%", 6.0, 1.08);                       // how the score is built
+        caption("#c-c3", 49.0, 53.6);
+        fadeOut("#s-c3", 54.0, 0.6);
+
+        // 5. The Check Desk
+        screenIn("#s-v1", 54.8, 57.6, "50% 30%", 1.0, 1.02);
+        swap("#s-v1", "#s-v2", 57.6, "50% 30%", 3.0, 1.04);
+        swap("#s-v2", "#s-v3", 60.6, "50% 20%", 4.6, 1.05);                       // registry reveal
+        caption("#c-v1", 61.4, 64.6);
+        swap("#s-v3", "#s-v4", 65.2, "50% 30%", 3.2, 1.04);                       // wrong digit
+        caption("#c-v2", 65.9, 68.3); fadeOut("#s-v4", 68.1, 0.6);
+
+        // 6. The Response Desk
+        screenIn("#s-n1", 68.9, 77.0, "24% 45%", 1.0, 1.08);
+        caption("#c-n1", 71.0, 76.0);
+        swap("#s-n1", "#s-n2", 77.0, "65% 45%", 6.0, 1.04);
+        swap("#s-n2", "#s-n3", 83.0, "70% 60%", 7.0, 1.05);
+        caption("#c-n2", 83.8, 86.8); caption("#c-n3", 87.2, 90.0);
+        fadeOut("#s-n3", 89.9, 0.6);
+
+        // 7. The Year Planner and the Papers
+        screenIn("#s-p1", 90.7, 95.5, "28% 50%", 1.0, 1.05);
+        caption("#c-p1", 92.0, 95.0);
+        swap("#s-p1", "#s-p2", 95.5, "80% 55%", 4.0, 1.04);
+        caption("#c-p2", 96.2, 99.0);
+        swap("#s-p2", "#s-d1", 99.5, "50% 25%", 3.6, 1.04);
+        swap("#s-d1", "#s-d2", 103.2, "50% 75%", 4.6, 1.05);
+        caption("#c-d1", 104.0, 107.4); fadeOut("#s-d2", 107.4, 0.6);
+
+        // 8. Honesty
+        screenIn("#s-h", 108.2, 115.4, "50% 25%", 1.0, 1.05);
+        caption("#c-h", 110.2, 115.2); fadeOut("#s-h", 115.4, 0.6);
+
+        // 9. Proof: one line at a time, held together
+        fadeIn("#q1", 117.0, 0.8, 10); fadeIn("#q2", 120.5, 0.8, 10); fadeIn("#q3", 123.5, 0.8, 10); fadeIn("#q4", 126.5, 0.8, 10); fadeIn("#q5", 129.5, 0.8, 10);
+        fadeIn("#q-label", 117.6, 0.8, 0);
+        ["#q1", "#q2", "#q3", "#q4", "#q5", "#q-label"].forEach((s) => fadeOut(s, 133.8, 0.6));
+
+        // 10. Final Hero: the papers return with their verdicts, then the mark
+        [["#hp1", 134.9], ["#hp2", 135.2], ["#hp3", 135.5], ["#hp4", 135.8]].forEach(([s, t]) => tl.fromTo(s, { opacity: 0, y: 30 }, { opacity: 0.9, y: 0, duration: 0.9, ease: "power3.out" }, t));
+        [["#hpill1", 136.0], ["#hpill2", 136.3], ["#hpill3", 136.6], ["#hpill4", 136.9]].forEach(([s, t]) => fadeIn(s, t, 0.4, 6));
+        tl.fromTo("#mark", { opacity: 0, scale: 0.86 }, { opacity: 1, scale: 1, duration: 0.9, ease: "power3.out" }, 136.2);   // beat-locked: logo
+        fadeIn("#word", 136.8, 0.7, 8);
+        fadeIn("#tag", 137.6, 0.8, 8);
+        ["#hp1", "#hp2", "#hp3", "#hp4"].forEach((s) => tl.to(s, { opacity: 0.35, duration: 1.0 }, 138.5));
+
+        window.__timelines = window.__timelines || {};
+        window.__timelines["root"] = tl;
+      </script>
+    </div>
+  </body>
+</html>
